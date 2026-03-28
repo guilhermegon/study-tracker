@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/d/trabalho/study-tracker/**)",
+      "Bash(npm install:*)",
+      "Bash(ls /mnt/)",
+      "Read(//d//**)",
+      "Bash(ls -la \"D:\\\\trabalho\\\\study-tracker\\\\client\\\\src\\\\pages\"\" 2>/dev/null || echo \"checking with find \")"
+    ]
+  }
+}

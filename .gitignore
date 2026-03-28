@@ -1,0 +1,4 @@
+node_modules/
+server/data/study.db
+client/dist/
+.env
