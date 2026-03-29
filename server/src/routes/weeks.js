@@ -115,13 +115,18 @@ router.post('/:id/duplicate', (req, res) => {
     `).run(newWeekId, req.params.id)
 
     db.prepare(`
-      INSERT INTO entries (week_id, subject_id, dia, estudado, aula_estudada,
+      INSERT INTO entries (week_id, subject_id, dia, estudado, total_aulas, aula_estudada,
         num_pags_inicio, num_pags_fim, qtd_pags_estudadas,
         num_exercicios, num_acertos, percentual_acerto, dificuldade)
-      SELECT ?, subject_id, dia, estudado, aula_estudada,
+      SELECT ?, subject_id, dia, estudado, total_aulas, aula_estudada,
         num_pags_inicio, num_pags_fim, qtd_pags_estudadas,
         num_exercicios, num_acertos, percentual_acerto, dificuldade
       FROM entries WHERE week_id = ?
+    `).run(newWeekId, req.params.id)
+
+    db.prepare(`
+      INSERT INTO week_day_orders (week_id, dia, subject_ids)
+      SELECT ?, dia, subject_ids FROM week_day_orders WHERE week_id = ?
     `).run(newWeekId, req.params.id)
 
     result = db.prepare('SELECT * FROM weeks WHERE id = ?').get(newWeekId)
@@ -170,6 +175,28 @@ router.delete('/:weekId/subjects/:subjectId', (req, res) => {
     'DELETE FROM week_subjects WHERE week_id = ? AND subject_id = ?'
   ).run(req.params.weekId, req.params.subjectId)
   if (result.changes === 0) return res.status(404).json({ error: 'Não encontrado' })
+  res.json({ ok: true })
+})
+
+// GET /api/weeks/:id/order
+router.get('/:id/order', (req, res) => {
+  const rows = db.prepare(
+    'SELECT dia, subject_ids FROM week_day_orders WHERE week_id = ?'
+  ).all(req.params.id)
+  const order = {}
+  rows.forEach(r => { order[r.dia] = JSON.parse(r.subject_ids) })
+  res.json(order)
+})
+
+// PUT /api/weeks/:id/order/:dia
+router.put('/:id/order/:dia', (req, res) => {
+  const { subject_ids } = req.body
+  if (!Array.isArray(subject_ids)) return res.status(400).json({ error: 'subject_ids deve ser um array' })
+  db.prepare(`
+    INSERT INTO week_day_orders (week_id, dia, subject_ids)
+    VALUES (?, ?, ?)
+    ON CONFLICT(week_id, dia) DO UPDATE SET subject_ids = excluded.subject_ids
+  `).run(req.params.id, req.params.dia, JSON.stringify(subject_ids))
   res.json({ ok: true })
 })
 

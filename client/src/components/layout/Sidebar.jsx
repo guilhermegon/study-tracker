@@ -7,10 +7,12 @@ import { api } from '../../api/client'
 
 const NAV = [
   { to: '/', label: 'Início', icon: '🏠' },
-  { to: '/lancamento', label: 'Lançar Estudo', icon: '✏️' },
   { to: '/semana', label: 'Visão Semanal', icon: '📋' },
   { to: '/dashboard', label: 'Dashboard', icon: '📊' },
   { to: '/relatorio', label: 'Relatório', icon: '📈' },
+  { to: '/notas', label: 'Notas', icon: '📝' },
+  { to: '/concursos', label: 'Concursos', icon: '🏆' },
+  { to: '/disciplinas', label: 'Disciplinas', icon: '📖' },
 ]
 
 export default function Sidebar() {

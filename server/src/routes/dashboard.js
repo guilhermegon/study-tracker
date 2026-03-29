@@ -90,7 +90,8 @@ router.get('/studied-vs-planned', (req, res) => {
     SELECT
       s.name AS subject_name,
       e.dia,
-      MAX(e.estudado) AS studied
+      COUNT(e.id) AS total,
+      COALESCE(SUM(e.estudado), 0) AS studied
     FROM week_subjects ws
     JOIN subjects s ON s.id = ws.subject_id
     LEFT JOIN entries e ON e.subject_id = ws.subject_id AND e.week_id = ws.week_id
@@ -99,7 +100,7 @@ router.get('/studied-vs-planned', (req, res) => {
     ORDER BY s.name, e.dia
   `).all(week_id)
 
-  // pivot into {subject_name, Seg: bool|null, Ter: bool|null, ...}
+  // pivot into {subject_name, Seg: {studied, total}|null, ...}
   const map = {}
   for (const row of rows) {
     if (!map[row.subject_name]) {
@@ -107,7 +108,7 @@ router.get('/studied-vs-planned', (req, res) => {
       for (const d of DAYS) map[row.subject_name][d] = null
     }
     if (row.dia) {
-      map[row.subject_name][row.dia] = row.studied === 1
+      map[row.subject_name][row.dia] = { studied: row.studied, total: row.total }
     }
   }
 

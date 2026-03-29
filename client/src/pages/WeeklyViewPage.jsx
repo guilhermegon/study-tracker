@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useWeekContext } from '../store/weekContext'
 import { useEntries } from '../hooks/useEntries'
+import EntryForm from '../components/entries/EntryForm'
 import { api } from '../api/client'
 import { useAppToast } from '../components/layout/AppShell'
 import jsPDF from 'jspdf'
@@ -26,6 +27,8 @@ export default function WeeklyViewPage() {
   const { selectedWeekId, selectedWeek } = useWeekContext()
   const toast = useAppToast()
   const { entries, loading, reload } = useEntries(selectedWeekId)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addFormDia, setAddFormDia] = useState(null)
   const [editEntry, setEditEntry] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
@@ -35,20 +38,37 @@ export default function WeeklyViewPage() {
   const [duplicateTargets, setDuplicateTargets] = useState([])
   const [customOrder, setCustomOrder] = useState({})
   const [dragOverIdx, setDragOverIdx] = useState(null)
+  const [dragOverDia, setDragOverDia] = useState(null)
+  const [dragSourceDia, setDragSourceDia] = useState(null)
   const printRef = useRef(null)
   const dragItem = useRef(null)
   const dragOverItem = useRef(null)
+  const savedScrollY = useRef(null)      // casos imediatos (abrir/cancelar edição)
+  const reloadScrollY = useRef(null)     // casos com reload (salvar/excluir)
 
   useEffect(() => {
     if (!selectedWeekId) return
-    const order = {}
+    // Carrega localStorage imediatamente (sem flicker)
+    const localOrder = {}
     DIAS.forEach(dia => {
       const saved = localStorage.getItem(`study-order-${selectedWeekId}-${dia}`)
       if (saved) {
-        try { order[dia] = JSON.parse(saved) } catch {}
+        try { localOrder[dia] = JSON.parse(saved) } catch {}
       }
     })
-    setCustomOrder(order)
+    setCustomOrder(localOrder)
+    // Sincroniza com o banco (fonte de verdade)
+    api.getWeekOrder(selectedWeekId).then(dbOrder => {
+      if (Object.keys(dbOrder).length === 0) return
+      setCustomOrder(prev => {
+        const merged = { ...prev }
+        Object.entries(dbOrder).forEach(([dia, ids]) => {
+          merged[dia] = ids
+          localStorage.setItem(`study-order-${selectedWeekId}-${dia}`, JSON.stringify(ids))
+        })
+        return merged
+      })
+    }).catch(console.error)
   }, [selectedWeekId])
 
   useEffect(() => {
@@ -59,47 +79,98 @@ export default function WeeklyViewPage() {
   function getOrderedEntries(dia, list) {
     const order = customOrder[dia]
     if (!order) return list
-    const ordered = order.map(id => list.find(e => e.id === id)).filter(Boolean)
-    const rest = list.filter(e => !order.includes(e.id))
+    const ordered = order.map(sid => list.find(e => e.subject_id === sid)).filter(Boolean)
+    const rest = list.filter(e => !order.includes(e.subject_id))
     return [...ordered, ...rest]
   }
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
   function handleDragStart(dia, idx) {
     dragItem.current = { dia, idx }
+    setDragSourceDia(dia)
   }
 
   function handleDragEnter(dia, idx) {
     dragOverItem.current = { dia, idx }
     setDragOverIdx(`${dia}-${idx}`)
+    setDragOverDia(dia)
   }
 
-  function handleDragEnd(dia, orderedList) {
+  async function handleDragEnd(dia, orderedList) {
     setDragOverIdx(null)
+    setDragOverDia(null)
+    setDragSourceDia(null)
     if (!dragItem.current || !dragOverItem.current) return
-    if (dragItem.current.dia !== dia || dragOverItem.current.dia !== dia) return
+    if (dragItem.current.dia !== dia) return
 
+    const targetDia = dragOverItem.current.dia
     const from = dragItem.current.idx
     const to = dragOverItem.current.idx
+    const movedEntry = orderedList[from]
     dragItem.current = null
     dragOverItem.current = null
-    if (from === to) return
 
-    const ids = orderedList.map(e => e.id)
-    const [moved] = ids.splice(from, 1)
-    ids.splice(to, 0, moved)
-
-    setCustomOrder(prev => ({ ...prev, [dia]: ids }))
-    localStorage.setItem(`study-order-${selectedWeekId}-${dia}`, JSON.stringify(ids))
+    if (targetDia === dia) {
+      // Same day: reorder
+      if (from === to) return
+      const ids = orderedList.map(e => e.subject_id)
+      const [moved] = ids.splice(from, 1)
+      ids.splice(to, 0, moved)
+      setCustomOrder(prev => ({ ...prev, [dia]: ids }))
+      localStorage.setItem(`study-order-${selectedWeekId}-${dia}`, JSON.stringify(ids))
+      api.saveWeekDayOrder(selectedWeekId, dia, ids).catch(console.error)
+    } else {
+      // Different day: move entry via API
+      if (!movedEntry) return
+      setSaving(true)
+      try {
+        await api.updateEntry(movedEntry.id, { dia: targetDia })
+        const sourceIds = orderedList.map(e => e.subject_id).filter(sid => sid !== movedEntry.subject_id)
+        const targetOrdered = getOrderedEntries(targetDia, grouped[targetDia] || [])
+        const targetIds = targetOrdered.map(e => e.subject_id)
+        targetIds.splice(to, 0, movedEntry.subject_id)
+        setCustomOrder(prev => ({ ...prev, [dia]: sourceIds, [targetDia]: targetIds }))
+        localStorage.setItem(`study-order-${selectedWeekId}-${dia}`, JSON.stringify(sourceIds))
+        localStorage.setItem(`study-order-${selectedWeekId}-${targetDia}`, JSON.stringify(targetIds))
+        api.saveWeekDayOrder(selectedWeekId, dia, sourceIds).catch(console.error)
+        api.saveWeekDayOrder(selectedWeekId, targetDia, targetIds).catch(console.error)
+        toast(`Disciplina movida para ${targetDia}`, 'success')
+        reload()
+      } catch {
+        toast('Erro ao mover disciplina', 'error')
+      } finally {
+        setSaving(false)
+      }
+    }
   }
 
   // ── Edição inline ──────────────────────────────────────────────────────────
+  const getMain = () => document.querySelector('main')
+
+  // Restaura scroll imediato (abrir/cancelar edição — sem reload)
+  useLayoutEffect(() => {
+    if (savedScrollY.current !== null) {
+      getMain()?.scrollTo(0, savedScrollY.current)
+      savedScrollY.current = null
+    }
+  })
+
+  // Restaura scroll após reload (salvar/excluir) — só dispara quando loading vira false
+  useLayoutEffect(() => {
+    if (!loading && reloadScrollY.current !== null) {
+      getMain()?.scrollTo(0, reloadScrollY.current)
+      reloadScrollY.current = null
+    }
+  }, [loading])
+
   function startEdit(e) {
+    savedScrollY.current = getMain()?.scrollTop ?? 0
     setEditEntry(e)
     setEditForm(toForm(e))
   }
 
   function cancelEdit() {
+    savedScrollY.current = getMain()?.scrollTop ?? 0
     setEditEntry(null)
   }
 
@@ -122,6 +193,7 @@ export default function WeeklyViewPage() {
 
   async function handleSaveEdit() {
     if (!editEntry) return
+    reloadScrollY.current = getMain()?.scrollTop ?? 0
     setSaving(true)
     try {
       const payload = {
@@ -152,8 +224,22 @@ export default function WeeklyViewPage() {
   }
 
   // ── Ações ─────────────────────────────────────────────────────────────────
+  function handleAdded() {
+    setShowAddForm(false)
+    setAddFormDia(null)
+    reload()
+    toast('Registro adicionado!', 'success')
+  }
+
+  function openAddForDia(dia) {
+    setAddFormDia(prev => prev === dia ? null : dia)
+    setShowAddForm(false)
+    setEditEntry(null)
+  }
+
   async function handleDelete(id) {
     if (!confirm('Excluir este registro?')) return
+    reloadScrollY.current = getMain()?.scrollTop ?? 0
     await api.deleteEntry(id)
     toast('Registro excluído', 'success')
     reload()
@@ -174,7 +260,7 @@ export default function WeeklyViewPage() {
 
   async function handleDuplicate() {
     if (!duplicateSource || duplicateTargets.length === 0) return
-    const sourceEntries = grouped[duplicateSource] || []
+    const sourceEntries = getOrderedEntries(duplicateSource, grouped[duplicateSource] || [])
     setSaving(true)
     try {
       for (const target of duplicateTargets) {
@@ -183,7 +269,7 @@ export default function WeeklyViewPage() {
             subject_id: entry.subject_id,
             dia: target,
             estudado: entry.estudado,
-            total_aulas: entry.total_aulas,
+            total_aulas: entry.total_aulas ?? weekSubjects.find(ws => ws.id === entry.subject_id)?.ws_total_aulas ?? null,
             aula_estudada: entry.aula_estudada,
             num_pags_inicio: entry.num_pags_inicio,
             num_pags_fim: entry.num_pags_fim,
@@ -194,6 +280,17 @@ export default function WeeklyViewPage() {
             dificuldade: entry.dificuldade,
           })
         }
+      }
+      const sourceOrder = localStorage.getItem(`study-order-${selectedWeekId}-${duplicateSource}`)
+      if (sourceOrder) {
+        const parsedOrder = JSON.parse(sourceOrder)
+        const newCustomOrder = { ...customOrder }
+        for (const target of duplicateTargets) {
+          localStorage.setItem(`study-order-${selectedWeekId}-${target}`, sourceOrder)
+          newCustomOrder[target] = parsedOrder
+          api.saveWeekDayOrder(selectedWeekId, target, parsedOrder).catch(console.error)
+        }
+        setCustomOrder(newCustomOrder)
       }
       const label = duplicateTargets.join(', ')
       toast(`${duplicateSource} duplicado para: ${label}`, 'success')
@@ -285,15 +382,33 @@ export default function WeeklyViewPage() {
               {selectedWeek.context && <span className="text-gray-400"> · {selectedWeek.context}</span>}
             </p>
           )}
+          {selectedWeek?.date_start && selectedWeek?.date_end && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date(selectedWeek.date_start + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              {' – '}
+              {new Date(selectedWeek.date_end + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </p>
+          )}
         </div>
         <div className="flex items-start gap-6">
-          <button
-            onClick={exportPDF}
-            disabled={exporting || entries.length === 0}
-            className="no-print flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {exporting ? '⏳ Exportando...' : '⬇ Exportar PDF'}
-          </button>
+          <div className="no-print flex gap-2">
+            <button
+              onClick={() => { setShowAddForm(v => !v); setEditEntry(null); setAddFormDia(null) }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors
+                ${showAddForm
+                  ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+            >
+              {showAddForm ? '✕ Cancelar' : '+ Novo registro'}
+            </button>
+            <button
+              onClick={exportPDF}
+              disabled={exporting || entries.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {exporting ? '⏳ Exportando...' : '⬇ Exportar PDF'}
+            </button>
+          </div>
           <div className="flex gap-6 text-center">
             <div>
               <p className="text-2xl font-bold text-blue-600">{entries.length}</p>
@@ -315,6 +430,19 @@ export default function WeeklyViewPage() {
         </div>
       </div>
 
+      {/* Formulário de novo registro */}
+      {showAddForm && (
+        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5 no-print">
+          <h2 className="text-sm font-semibold text-blue-700 mb-4">Novo registro</h2>
+          <EntryForm
+            weekId={selectedWeekId}
+            weekSubjects={weekSubjects}
+            onSaved={handleAdded}
+            onCancel={() => setShowAddForm(false)}
+          />
+        </div>
+      )}
+
       {/* Conteúdo */}
       {loading ? (
         <div className="text-center py-20 text-gray-400">Carregando...</div>
@@ -330,7 +458,7 @@ export default function WeeklyViewPage() {
             if (dayEntries.length === 0) return null
             const ordered = getOrderedEntries(dia, dayEntries)
             return (
-              <div key={dia}>
+              <div key={dia} onDragEnter={() => setDragOverDia(dia)} onDragOver={e => e.preventDefault()}>
                 <div className="mb-2 flex items-center gap-3 flex-wrap">
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
                     <span>{dia}</span>
@@ -359,14 +487,21 @@ export default function WeeklyViewPage() {
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => openDuplicate(dia)}
-                      className="no-print text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                      title={`Duplicar ${dia} para outro dia`}>
-                      ⧉ Duplicar
-                    </button>
+                    <div className="no-print flex items-center gap-3">
+                      <button onClick={() => openDuplicate(dia)}
+                        className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                        title={`Duplicar ${dia} para outro dia`}>
+                        ⧉ Duplicar
+                      </button>
+                      <button onClick={() => openAddForDia(dia)}
+                        className={`text-xs font-medium transition-colors ${addFormDia === dia ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-blue-600'}`}
+                        title={`Novo registro para ${dia}`}>
+                        + Novo
+                      </button>
+                    </div>
                   )}
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-gray-300">
+                <div className={`overflow-x-auto rounded-xl border transition-colors ${dragOverDia === dia && dragSourceDia && dragSourceDia !== dia ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-300'}`}>
                   <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                     <colgroup>
                       <col className="no-print" style={{ width: '32px' }} />
@@ -387,7 +522,7 @@ export default function WeeklyViewPage() {
                         <th className="text-left px-4 py-2.5">Disciplina</th>
                         <th className="text-center px-3 py-2.5">Total Aulas</th>
                         <th className="text-left px-4 py-2.5">Aula / Conteúdo</th>
-                        <th className="text-center px-3 py-2.5">Págs</th>
+                        <th className="text-center px-3 py-2.5">Páginas</th>
                         <th className="text-center px-3 py-2.5">Exercícios</th>
                         <th className="text-center px-3 py-2.5">% Acerto</th>
                         <th className="text-left px-4 py-2.5">Dificuldade</th>
@@ -407,7 +542,7 @@ export default function WeeklyViewPage() {
                             onDragEnd={() => handleDragEnd(dia, ordered)}
                             onDragOver={ev => ev.preventDefault()}
                             onKeyDown={isEditing ? handleKeyDown : undefined}
-                            className={`transition-colors ${!e.estudado && !isEditing ? 'opacity-50' : ''} ${isDragTarget ? 'bg-blue-50 border-t-2 border-blue-300' : isEditing ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+                            className={`group transition-colors ${!e.estudado && !isEditing ? 'opacity-50' : ''} ${isDragTarget ? 'bg-blue-50 border-t-2 border-blue-300' : isEditing ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
                           >
                             {/* Drag handle */}
                             <td className="px-2 py-2 no-print text-gray-300 hover:text-gray-500 text-center select-none">
@@ -484,7 +619,7 @@ export default function WeeklyViewPage() {
                                 ? <div className="flex flex-col gap-1">
                                     <input type="number" min="0" value={editForm.num_exercicios}
                                       onChange={ev => setField('num_exercicios', ev.target.value)}
-                                      placeholder="total" className={ci + ' text-center'} />
+                                      placeholder="feitos" className={ci + ' text-center'}/>
                                     <input type="number" min="0" value={editForm.num_acertos}
                                       onChange={ev => setField('num_acertos', ev.target.value)}
                                       placeholder="acertos" className={ci + ' text-center'} />
@@ -533,7 +668,7 @@ export default function WeeklyViewPage() {
                                       ✕
                                     </button>
                                   </div>
-                                : <div className="flex gap-2">
+                                : <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => startEdit(e)}
                                       className="text-gray-400 hover:text-blue-600 text-xs transition-colors">✏️</button>
                                     <button onClick={() => handleDelete(e.id)}
@@ -547,6 +682,18 @@ export default function WeeklyViewPage() {
                     </tbody>
                   </table>
                 </div>
+                {addFormDia === dia && (
+                  <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5 no-print">
+                    <h2 className="text-sm font-semibold text-blue-700 mb-4">Novo registro — {dia}</h2>
+                    <EntryForm
+                      weekId={selectedWeekId}
+                      weekSubjects={weekSubjects}
+                      defaultDia={dia}
+                      onSaved={handleAdded}
+                      onCancel={() => setAddFormDia(null)}
+                    />
+                  </div>
+                )}
               </div>
             )
           })}

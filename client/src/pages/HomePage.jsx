@@ -73,23 +73,41 @@ export default function HomePage() {
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link to="/lancamento" className="card hover:shadow-md transition-shadow group cursor-pointer">
-          <div className="text-3xl mb-3">✏️</div>
-          <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Lançar Estudo</h3>
-          <p className="text-sm text-gray-400 mt-1">Registre o que você estudou hoje</p>
-        </Link>
-
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <Link to="/semana" className="card hover:shadow-md transition-shadow group cursor-pointer">
           <div className="text-3xl mb-3">📋</div>
           <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Visão Semanal</h3>
-          <p className="text-sm text-gray-400 mt-1">Veja todos os registros da semana</p>
+          <p className="text-sm text-gray-400 mt-1">Veja e edite os registros da semana</p>
         </Link>
 
         <Link to="/dashboard" className="card hover:shadow-md transition-shadow group cursor-pointer">
           <div className="text-3xl mb-3">📊</div>
           <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Dashboard</h3>
-          <p className="text-sm text-gray-400 mt-1">Gráficos e métricas agregadas</p>
+          <p className="text-sm text-gray-400 mt-1">Gráficos e métricas de desempenho</p>
+        </Link>
+
+        <Link to="/relatorio" className="card hover:shadow-md transition-shadow group cursor-pointer">
+          <div className="text-3xl mb-3">📈</div>
+          <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Relatório</h3>
+          <p className="text-sm text-gray-400 mt-1">Totais consolidados por semana</p>
+        </Link>
+
+        <Link to="/notas" className="card hover:shadow-md transition-shadow group cursor-pointer">
+          <div className="text-3xl mb-3">📝</div>
+          <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Notas</h3>
+          <p className="text-sm text-gray-400 mt-1">Suas anotações e lembretes</p>
+        </Link>
+
+        <Link to="/concursos" className="card hover:shadow-md transition-shadow group cursor-pointer">
+          <div className="text-3xl mb-3">🏆</div>
+          <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Concursos</h3>
+          <p className="text-sm text-gray-400 mt-1">Matérias e conteúdos por concurso</p>
+        </Link>
+
+        <Link to="/disciplinas" className="card hover:shadow-md transition-shadow group cursor-pointer">
+          <div className="text-3xl mb-3">📖</div>
+          <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Disciplinas</h3>
+          <p className="text-sm text-gray-400 mt-1">Gerencie todas as disciplinas</p>
         </Link>
       </div>
     </div>

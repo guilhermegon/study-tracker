@@ -3,6 +3,7 @@ import { useWeekContext } from '../store/weekContext'
 import { useDashboard } from '../hooks/useDashboard'
 import ProgressBySubject from '../components/dashboard/ProgressBySubject'
 import AccuracyChart from '../components/dashboard/AccuracyChart'
+import AccuracyComparison from '../components/dashboard/AccuracyComparison'
 import WeekComparison from '../components/dashboard/WeekComparison'
 import StudiedVsPlanned from '../components/dashboard/StudiedVsPlanned'
 
@@ -11,7 +12,7 @@ export default function DashboardPage() {
   const [compareIds, setCompareIds] = useState([])
 
   const allWeekIds = compareIds.length > 0 ? [...new Set([selectedWeekId, ...compareIds])] : [selectedWeekId]
-  const { progress, accuracy, comparison, studiedVsPlanned, loading } = useDashboard(selectedWeekId, allWeekIds)
+  const { progress, accuracy, accuracyByWeek, comparison, studiedVsPlanned, loading } = useDashboard(selectedWeekId, allWeekIds)
 
   function toggleCompare(id) {
     setCompareIds(prev =>
@@ -38,11 +39,27 @@ export default function DashboardPage() {
       {/* Week comparison selector */}
       {weeks.length > 1 && (
         <div className="card py-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Comparar com outras semanas
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Comparar com outras semanas
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCompareIds(weeks.filter(w => w.id !== selectedWeekId).map(w => w.id))}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Selecionar todas
+              </button>
+              <button
+                onClick={() => setCompareIds([])}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {weeks.filter(w => w.id !== selectedWeekId).map(w => (
+            {weeks.filter(w => w.id !== selectedWeekId).slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(w => (
               <button
                 key={w.id}
                 onClick={() => toggleCompare(w.id)}
@@ -69,10 +86,10 @@ export default function DashboardPage() {
             <ProgressBySubject data={progress} />
           </div>
 
-          {/* Accuracy */}
+          {/* Accuracy semana atual */}
           <div className="card">
             <h2 className="text-base font-semibold text-gray-700 mb-1">Taxa de Acerto em Exercícios</h2>
-            <p className="text-xs text-gray-400 mb-4">% de acerto por disciplina (linha = 70%)</p>
+            <p className="text-xs text-gray-400 mb-4">% de acerto por disciplina nesta semana (linha = 70%)</p>
             <AccuracyChart data={accuracy} />
           </div>
 
@@ -87,12 +104,24 @@ export default function DashboardPage() {
             <StudiedVsPlanned data={studiedVsPlanned} />
           </div>
 
-          {/* Week comparison */}
+          {/* Week comparison - páginas */}
           {allWeekIds.length > 1 && (
             <div className="card xl:col-span-2">
               <h2 className="text-base font-semibold text-gray-700 mb-1">Comparativo entre Semanas</h2>
               <p className="text-xs text-gray-400 mb-4">Páginas estudadas por disciplina × semana</p>
               <WeekComparison data={comparison} />
+            </div>
+          )}
+
+          {/* Accuracy comparison - multi-semanas */}
+          {allWeekIds.length > 1 && (
+            <div className="card xl:col-span-2">
+              <h2 className="text-base font-semibold text-gray-700 mb-1">Taxa de Acerto — Comparativo entre Semanas</h2>
+              <p className="text-xs text-gray-400 mb-4">% de acerto por disciplina em cada semana selecionada (linha = 70%)</p>
+              <AccuracyComparison
+                data={accuracyByWeek}
+                weeks={allWeekIds.map(id => weeks.find(w => w.id === id)).filter(Boolean)}
+              />
             </div>
           )}
         </div>

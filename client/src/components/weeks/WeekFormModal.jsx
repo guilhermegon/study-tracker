@@ -8,14 +8,14 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
   const [subjects, setSubjects] = useState([])
   const [allSubjects, setAllSubjects] = useState([])
   const [newSubject, setNewSubject] = useState('')
+  const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  const [editSubjectId, setEditSubjectId] = useState(null)
-  const [editSubjectName, setEditSubjectName] = useState('')
 
   useEffect(() => {
     if (!open) return
     api.getSubjects().then(setAllSubjects).catch(console.error)
+    setSearch('')
     if (isEdit) {
       setForm({
         name: week.name,
@@ -38,30 +38,6 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
         ? prev.filter(s => s.id !== sub.id)
         : [...prev, sub]
     )
-  }
-
-  async function handleRenameSubject(id) {
-    const name = editSubjectName.trim()
-    if (!name) return
-    try {
-      const updated = await api.updateSubject(id, { name })
-      setAllSubjects(prev => prev.map(s => s.id === id ? { ...s, name: updated.name } : s))
-      setSubjects(prev => prev.map(s => s.id === id ? { ...s, name: updated.name } : s))
-      setEditSubjectId(null)
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
-  async function handleDeleteSubject(id) {
-    if (!confirm('Excluir esta disciplina permanentemente? Ela será removida de todas as semanas.')) return
-    try {
-      await api.deleteSubject(id)
-      setAllSubjects(prev => prev.filter(s => s.id !== id))
-      setSubjects(prev => prev.filter(s => s.id !== id))
-    } catch (e) {
-      setError(e.message)
-    }
   }
 
   async function addNewSubject() {
@@ -136,60 +112,81 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
 
         <div>
           <label className="label">Disciplinas planejadas para esta semana</label>
-          <div className="flex gap-2 mb-2">
+
+          {/* Criar nova disciplina */}
+          <div className="flex gap-2 mb-3">
             <input className="input" value={newSubject}
               onChange={e => setNewSubject(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addNewSubject() } }}
               placeholder="Nova disciplina..." />
             <button type="button" onClick={addNewSubject} className="btn-secondary whitespace-nowrap">
-              + Adicionar
+              + Criar
             </button>
           </div>
-          {allSubjects.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {allSubjects.map(s => {
-                const selected = subjects.some(x => x.id === s.id)
-                const isEditing = editSubjectId === s.id
-                return (
-                  <div key={s.id}
-                    className={`flex items-center gap-1 pl-3 pr-1 py-1 rounded-full text-sm font-medium border transition-colors
-                      ${selected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}>
-                    {isEditing ? (
-                      <>
-                        <input
-                          autoFocus
-                          value={editSubjectName}
-                          onChange={e => setEditSubjectName(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') { e.preventDefault(); handleRenameSubject(s.id) }
-                            if (e.key === 'Escape') setEditSubjectId(null)
-                          }}
-                          className="w-28 bg-transparent border-b border-current focus:outline-none text-sm"
-                        />
-                        <button type="button" onClick={() => handleRenameSubject(s.id)}
-                          className="font-bold px-1 opacity-80 hover:opacity-100">✓</button>
-                        <button type="button" onClick={() => setEditSubjectId(null)}
-                          className="px-1 opacity-60 hover:opacity-100">✕</button>
-                      </>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => toggle(s)} className="hover:opacity-80">
-                          {s.name}
-                        </button>
-                        <button type="button"
-                          onClick={() => { setEditSubjectId(s.id); setEditSubjectName(s.name) }}
-                          className={`px-1 text-xs opacity-50 hover:opacity-100 transition-opacity ${selected ? 'text-white' : 'text-gray-500'}`}
-                          title="Renomear">✏️</button>
-                        <button type="button" onClick={() => handleDeleteSubject(s.id)}
-                          className={`px-1 text-xs opacity-50 hover:opacity-100 transition-opacity ${selected ? 'text-white' : 'text-gray-500'}`}
-                          title="Excluir disciplina">🗑</button>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+
+          {allSubjects.length > 0 && (() => {
+            const q = search.toLowerCase()
+            const selected   = allSubjects.filter(s => subjects.some(x => x.id === s.id))
+            const available  = allSubjects.filter(s => !subjects.some(x => x.id === s.id))
+            const selVisible = selected.filter(s => !q || s.name.toLowerCase().includes(q))
+            const avaVisible = available.filter(s => !q || s.name.toLowerCase().includes(q))
+            return (
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                {/* Barra de busca */}
+                <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
+                  <input
+                    className="w-full bg-transparent text-sm outline-none placeholder-gray-400"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="🔍 Buscar disciplina..."
+                  />
+                </div>
+
+                <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+                  {/* Selecionadas */}
+                  {selVisible.length > 0 && (
+                    <div className="px-3 py-2 bg-blue-50">
+                      <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
+                        Selecionadas ({subjects.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selVisible.map(s => (
+                          <button key={s.id} type="button" onClick={() => toggle(s)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            ✓ {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Disponíveis */}
+                  {avaVisible.length > 0 && (
+                    <div className="px-3 py-2">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                        Disponíveis ({avaVisible.length}{q && available.length !== avaVisible.length ? ` de ${available.length}` : ''})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {avaVisible.map(s => (
+                          <button key={s.id} type="button" onClick={() => toggle(s)}
+                            className="px-2.5 py-1 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sem resultados */}
+                  {selVisible.length === 0 && avaVisible.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-6">
+                      Nenhuma disciplina encontrada para "{search}"
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

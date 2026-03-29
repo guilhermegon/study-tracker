@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine, ResponsiveContainer } from 'recharts'
 
 export default function AccuracyChart({ data }) {
   if (!data.length) return <p className="text-gray-400 text-sm text-center py-8">Sem dados de exercícios</p>

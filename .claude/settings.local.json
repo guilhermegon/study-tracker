@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(ls /mnt/)",
       "Read(//d//**)",
-      "Bash(ls -la \"D:\\\\trabalho\\\\study-tracker\\\\client\\\\src\\\\pages\"\" 2>/dev/null || echo \"checking with find \")"
+      "Bash(ls -la \"D:\\\\trabalho\\\\study-tracker\\\\client\\\\src\\\\pages\"\" 2>/dev/null || echo \"checking with find \")",
+      "Bash(find /d/trabalho/study-tracker -not -path */node_modules/* -type f -o -type d)"
     ]
   }
 }

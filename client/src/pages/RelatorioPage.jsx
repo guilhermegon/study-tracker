@@ -25,6 +25,7 @@ export default function RelatorioPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [selectedSubjects, setSelectedSubjects] = useState([])
 
   function toggle(id) {
     setSelectedIds(prev =>
@@ -35,17 +36,41 @@ export default function RelatorioPage() {
   function selectAll() { setSelectedIds(weeks.map(w => w.id)) }
   function clearAll()  { setSelectedIds([]) }
 
+  function toggleSubject(name) {
+    setSelectedSubjects(prev =>
+      prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]
+    )
+  }
+
   useEffect(() => {
-    if (selectedIds.length === 0) { setData(null); return }
+    if (selectedIds.length === 0) { setData(null); setSelectedSubjects([]); return }
     setLoading(true)
     setError(null)
     api.getTotals(selectedIds)
-      .then(setData)
+      .then(d => { setData(d); setSelectedSubjects([]) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [selectedIds.join(',')])
 
-  const s = data?.summary
+  // Filtragem por disciplina (frontend)
+  const filteredRows = data
+    ? (selectedSubjects.length === 0 ? data.by_subject : data.by_subject.filter(r => selectedSubjects.includes(r.subject_name)))
+    : []
+
+  const filteredSummary = filteredRows.length > 0 ? (() => {
+    const total_paginas    = filteredRows.reduce((a, r) => a + r.total_paginas, 0)
+    const total_sessoes    = filteredRows.reduce((a, r) => a + r.total_sessoes, 0)
+    const total_exercicios = filteredRows.reduce((a, r) => a + r.total_exercicios, 0)
+    const total_acertos    = filteredRows.reduce((a, r) => a + r.total_acertos, 0)
+    const total_registros  = filteredRows.reduce((a, r) => a + r.total_registros, 0)
+    return {
+      total_paginas, total_sessoes, total_exercicios, total_acertos, total_registros,
+      total_semanas: data.summary.total_semanas,
+      avg_accuracy: total_exercicios > 0 ? Math.round((total_acertos / total_exercicios) * 1000) / 10 : null,
+    }
+  })() : data?.summary
+
+  const s = filteredSummary
 
   return (
     <div className="p-8 space-y-6">
@@ -72,7 +97,7 @@ export default function RelatorioPage() {
           <p className="text-sm text-gray-400 italic">Nenhuma semana cadastrada</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {weeks.map(w => (
+            {weeks.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(w => (
               <button
                 key={w.id}
                 onClick={() => toggle(w.id)}
@@ -92,6 +117,39 @@ export default function RelatorioPage() {
           </p>
         )}
       </div>
+
+      {/* Filtro por disciplina */}
+      {data && data.by_subject.length > 0 && (
+        <div className="card py-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Disciplina</p>
+            {selectedSubjects.length > 0 && (
+              <button onClick={() => setSelectedSubjects([])} className="text-xs text-gray-400 hover:text-gray-600">
+                Limpar filtro
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {data.by_subject.slice().sort((a, b) => a.subject_name.localeCompare(b.subject_name, 'pt-BR')).map(row => (
+              <button
+                key={row.subject_name}
+                onClick={() => toggleSubject(row.subject_name)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+                  ${selectedSubjects.includes(row.subject_name)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+              >
+                {row.subject_name}
+              </button>
+            ))}
+          </div>
+          {selectedSubjects.length > 0 && (
+            <p className="text-xs text-gray-400 mt-2">
+              {selectedSubjects.length} disciplina{selectedSubjects.length > 1 ? 's' : ''} selecionada{selectedSubjects.length > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Resultado */}
       {selectedIds.length === 0 ? (
@@ -138,7 +196,7 @@ export default function RelatorioPage() {
           </div>
 
           {/* Tabela por disciplina */}
-          {data.by_subject.length > 0 && (
+          {filteredRows.length > 0 && (
             <div className="card">
               <h2 className="text-base font-semibold text-gray-700 mb-4">Totais por Disciplina</h2>
               <div className="overflow-x-auto">
@@ -154,7 +212,7 @@ export default function RelatorioPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {data.by_subject.map(row => (
+                    {filteredRows.map(row => (
                       <tr key={row.subject_name} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-800">{row.subject_name}</td>
                         <td className="px-4 py-3 text-center text-gray-600">{row.total_paginas.toLocaleString('pt-BR')}</td>

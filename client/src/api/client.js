@@ -42,6 +42,29 @@ export const api = {
   updateEntry: (id, data) => request(`/entries/${id}`, { method: 'PUT', body: data }),
   deleteEntry: (id) => request(`/entries/${id}`, { method: 'DELETE' }),
 
+  // Week day order (drag-and-drop persistence)
+  getWeekOrder: (weekId) => request(`/weeks/${weekId}/order`),
+  saveWeekDayOrder: (weekId, dia, subjectIds) => request(`/weeks/${weekId}/order/${dia}`, { method: 'PUT', body: { subject_ids: subjectIds } }),
+
+  // Concursos
+  getConcursos: () => request('/concursos'),
+  createConcurso: (data) => request('/concursos', { method: 'POST', body: data }),
+  updateConcurso: (id, data) => request(`/concursos/${id}`, { method: 'PUT', body: data }),
+  deleteConcurso: (id) => request(`/concursos/${id}`, { method: 'DELETE' }),
+  getMaterias: (concursoId) => request(`/concursos/${concursoId}/materias`),
+  addConcursoSubject: (concursoId, subjectId) => request(`/concursos/${concursoId}/materias`, { method: 'POST', body: { subject_id: subjectId } }),
+  removeConcursoSubject: (id) => request(`/materias/${id}`, { method: 'DELETE' }),
+  createConteudo: (concursoSubjectId, data) => request(`/materias/${concursoSubjectId}/conteudos`, { method: 'POST', body: data }),
+  updateConteudo: (id, data) => request(`/conteudos/${id}`, { method: 'PUT', body: data }),
+  deleteConteudo: (id) => request(`/conteudos/${id}`, { method: 'DELETE' }),
+  toggleConteudo: (id) => request(`/conteudos/${id}/toggle`, { method: 'PATCH' }),
+
+  // Notes
+  getNotes: () => request('/notes'),
+  createNote: (data) => request('/notes', { method: 'POST', body: data }),
+  updateNote: (id, data) => request(`/notes/${id}`, { method: 'PUT', body: data }),
+  deleteNote: (id) => request(`/notes/${id}`, { method: 'DELETE' }),
+
   // Dashboard
   getProgress: (weekId) => request(`/dashboard/progress?week_id=${weekId}`),
   getAccuracy: (weekId) => request(`/dashboard/accuracy?week_id=${weekId}`),
