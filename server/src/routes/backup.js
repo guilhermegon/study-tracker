@@ -10,9 +10,6 @@ const PROJECT_ROOT = join(__dirname, '../../../')
 const DB_PATH = join(__dirname, '../../data/study.db')
 const DB_INCOMING = join(__dirname, '../../data/study.db.incoming')
 
-// Assinatura SQLite: primeiros 16 bytes do arquivo são "SQLite format 3\x00"
-const SQLITE_MAGIC = Buffer.from('SQLite format 3\x00')
-
 const router = Router()
 
 // GET /api/backup/download — faz checkpoint do WAL e envia o arquivo
@@ -51,14 +48,8 @@ router.get('/download', (req, res) => {
 router.post('/restore', (req, res) => {
   const body = req.body
 
-  if (!body || !Buffer.isBuffer(body) || body.length === 0) {
-    return res.status(400).json({ error: 'Arquivo de backup inválido ou vazio.' })
-  }
-
-  // Valida assinatura SQLite comparando os primeiros 16 bytes diretamente como Buffer
-  const fileHeader = body.slice(0, 16)
-  if (!fileHeader.equals(SQLITE_MAGIC)) {
-    return res.status(400).json({ error: 'O arquivo enviado não é um banco SQLite válido.' })
+  if (!body || body.length === 0) {
+    return res.status(400).json({ error: 'Arquivo de backup vazio ou não recebido.' })
   }
 
   // Salva em arquivo temporário — o script de restauração vai mover para o lugar certo

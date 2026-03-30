@@ -87,6 +87,9 @@ npm install --prefix client > /dev/null 2>&1
 echo "Compilando interface..."
 npm run build --prefix client > /dev/null 2>&1
 
+# Corrigir permissões dos scripts
+chmod +x start.sh update.sh restore.sh 2>/dev/null || true
+
 # Reiniciar servidor
 echo ""
 echo "Reiniciando servidor..."

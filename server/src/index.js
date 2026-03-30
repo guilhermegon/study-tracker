@@ -24,7 +24,7 @@ const PORT = 3001
 
 app.use(cors())
 app.use(express.json())
-app.use('/api/backup/restore', express.raw({ type: 'application/octet-stream', limit: '100mb' }))
+app.use('/api/backup/restore', express.raw({ type: () => true, limit: '100mb' }))
 
 // Run migrations on startup
 runMigrations()
