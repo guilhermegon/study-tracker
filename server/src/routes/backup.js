@@ -2,13 +2,13 @@ import { Router } from 'express'
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { existsSync, writeFileSync, createReadStream, statSync } from 'fs'
+import { existsSync, writeFileSync, createReadStream, statSync, mkdirSync } from 'fs'
 import db from '../db/connection.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = join(__dirname, '../../../')
 const DB_PATH = join(__dirname, '../../data/study.db')
-const DB_INCOMING = join(__dirname, '../../data/study.db.incoming')
+const DATA_DIR = join(__dirname, '../../data')
 
 const router = Router()
 
@@ -44,7 +44,7 @@ router.get('/download', (req, res) => {
   stream.pipe(res)
 })
 
-// POST /api/backup/restore — recebe o arquivo .db como binário e reinicia o servidor
+// POST /api/backup/restore — substitui o banco imediatamente e reinicia o servidor
 router.post('/restore', (req, res) => {
   const body = req.body
 
@@ -52,34 +52,42 @@ router.post('/restore', (req, res) => {
     return res.status(400).json({ error: 'Arquivo de backup vazio ou não recebido.' })
   }
 
-  // Salva em arquivo temporário — o script de restauração vai mover para o lugar certo
   try {
-    writeFileSync(DB_INCOMING, body)
+    // 1. Garante que a pasta de dados existe
+    mkdirSync(DATA_DIR, { recursive: true })
+
+    // 2. Fecha a conexão com o banco atual para liberar o arquivo
+    db.close()
+
+    // 3. Grava o novo banco diretamente no lugar do atual
+    //    Feito aqui mesmo, antes de sair, sem depender de script externo
+    writeFileSync(DB_PATH, body)
   } catch (err) {
-    return res.status(500).json({ error: 'Erro ao salvar arquivo de backup.', details: err.message })
+    return res.status(500).json({ error: 'Erro ao restaurar banco de dados.', details: err.message })
   }
 
-  const isWin = process.platform === 'win32'
-  const scriptName = isWin ? 'restore.bat' : 'restore.sh'
-  const scriptPath = join(PROJECT_ROOT, scriptName)
-
-  const child = isWin
-    ? spawn('cmd.exe', ['/c', scriptPath], {
-        detached: true,
-        stdio: 'ignore',
-        cwd: PROJECT_ROOT,
-        env: { ...process.env, RESTORE_FILE: DB_INCOMING }
-      })
-    : spawn('/bin/bash', [scriptPath], {
-        detached: true,
-        stdio: 'ignore',
-        cwd: PROJECT_ROOT,
-        env: { ...process.env, RESTORE_FILE: DB_INCOMING }
-      })
-
-  child.unref()
+  // 4. Responde ao cliente
   res.json({ ok: true, message: 'Backup restaurado. O servidor está reiniciando.' })
-  setTimeout(() => process.exit(0), 1500)
+
+  // 5. Spawna apenas o restart do servidor (banco já está no lugar)
+  const isWin = process.platform === 'win32'
+  const restartCmd = isWin
+    ? spawn('cmd.exe', ['/c', `timeout /t 2 /nobreak >nul && start "Study Tracker" node --experimental-sqlite server\\src\\index.js`], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: PROJECT_ROOT,
+        shell: false
+      })
+    : spawn('/bin/bash', ['-c', 'sleep 2 && nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &'], {
+        detached: true,
+        stdio: 'ignore',
+        cwd: PROJECT_ROOT
+      })
+
+  restartCmd.unref()
+
+  // 6. Encerra o processo atual
+  setTimeout(() => process.exit(0), 1000)
 })
 
 export default router
