@@ -72,4 +72,8 @@ export const api = {
   getStudiedVsPlanned: (weekId) => request(`/dashboard/studied-vs-planned?week_id=${weekId}`),
   getSummary: (weekId) => request(`/dashboard/summary?week_id=${weekId}`),
   getTotals: (weekIds) => request(`/dashboard/totals?week_ids=${weekIds.join(',')}`),
+
+  // Update
+  checkUpdate: () => request('/update/check'),
+  applyUpdate: (version) => request('/update/apply', { method: 'POST', body: { version } }),
 }
