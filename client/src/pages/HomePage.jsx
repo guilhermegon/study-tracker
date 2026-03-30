@@ -122,7 +122,7 @@ export default function HomePage() {
         )}
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           <Link to="/semana" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📋</div>
             <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Visão Semanal</h3>
@@ -157,6 +157,12 @@ export default function HomePage() {
             <div className="text-3xl mb-3">📖</div>
             <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Disciplinas</h3>
             <p className="text-sm text-gray-400 mt-1">Gerencie todas as disciplinas</p>
+          </Link>
+
+          <Link to="/backup" className="card hover:shadow-md transition-shadow group cursor-pointer">
+            <div className="text-3xl mb-3">💾</div>
+            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Backup</h3>
+            <p className="text-sm text-gray-400 mt-1">Baixe ou restaure seus dados</p>
           </Link>
         </div>
       </div>
