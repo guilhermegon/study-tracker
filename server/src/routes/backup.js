@@ -2,34 +2,52 @@ import { Router } from 'express'
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync, writeFileSync, createReadStream, statSync } from 'fs'
+import db from '../db/connection.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = join(__dirname, '../../../')
 const DB_PATH = join(__dirname, '../../data/study.db')
 const DB_INCOMING = join(__dirname, '../../data/study.db.incoming')
 
+// Assinatura SQLite: primeiros 16 bytes do arquivo são "SQLite format 3\x00"
+const SQLITE_MAGIC = Buffer.from('SQLite format 3\x00')
+
 const router = Router()
 
-// GET /api/backup/download — envia o arquivo do banco para download
+// GET /api/backup/download — faz checkpoint do WAL e envia o arquivo
 router.get('/download', (req, res) => {
   if (!existsSync(DB_PATH)) {
     return res.status(404).json({ error: 'Banco de dados não encontrado.' })
+  }
+
+  try {
+    // Força o flush de todas as escritas pendentes do WAL para o arquivo principal
+    // Garante que o arquivo .db baixado esteja completo e consistente
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+  } catch {
+    // Continua mesmo se o checkpoint falhar (ex: nenhum WAL ativo)
   }
 
   const now = new Date()
   const pad = n => String(n).padStart(2, '0')
   const filename = `study-tracker-backup-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.db`
 
-  res.download(DB_PATH, filename, (err) => {
-    if (err && !res.headersSent) {
+  const stat = statSync(DB_PATH)
+  res.setHeader('Content-Type', 'application/octet-stream')
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+  res.setHeader('Content-Length', stat.size)
+
+  const stream = createReadStream(DB_PATH)
+  stream.on('error', () => {
+    if (!res.headersSent) {
       res.status(500).json({ error: 'Erro ao enviar arquivo.' })
     }
   })
+  stream.pipe(res)
 })
 
 // POST /api/backup/restore — recebe o arquivo .db como binário e reinicia o servidor
-// Espera Content-Type: application/octet-stream com o corpo sendo os bytes do arquivo .db
 router.post('/restore', (req, res) => {
   const body = req.body
 
@@ -37,9 +55,9 @@ router.post('/restore', (req, res) => {
     return res.status(400).json({ error: 'Arquivo de backup inválido ou vazio.' })
   }
 
-  // Valida assinatura do SQLite: primeiros 16 bytes devem ser "SQLite format 3\000"
-  const signature = body.slice(0, 15).toString('ascii')
-  if (signature !== 'SQLite format 3') {
+  // Valida assinatura SQLite comparando os primeiros 16 bytes diretamente como Buffer
+  const fileHeader = body.slice(0, 16)
+  if (!fileHeader.equals(SQLITE_MAGIC)) {
     return res.status(400).json({ error: 'O arquivo enviado não é um banco SQLite válido.' })
   }
 

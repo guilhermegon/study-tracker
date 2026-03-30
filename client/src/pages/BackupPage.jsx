@@ -1,11 +1,39 @@
 import { useState, useRef } from 'react'
 
+async function downloadBackup() {
+  const res = await fetch('/api/backup/download')
+  if (!res.ok) throw new Error('Erro ao baixar backup.')
+  const blob = await res.blob()
+  const disposition = res.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="(.+?)"/)
+  const filename = match ? match[1] : 'study-tracker-backup.db'
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function BackupPage() {
   const [restoreFile, setRestoreFile] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [restoreState, setRestoreState] = useState('idle') // 'idle' | 'loading' | 'done' | 'error'
+  const [downloadState, setDownloadState] = useState('idle') // 'idle' | 'loading' | 'error'
   const [errorMsg, setErrorMsg] = useState('')
   const fileInputRef = useRef(null)
+
+  async function handleDownload() {
+    setDownloadState('loading')
+    try {
+      await downloadBackup()
+      setDownloadState('idle')
+    } catch (err) {
+      setDownloadState('error')
+    }
+  }
 
   function handleFileChange(e) {
     const file = e.target.files[0]
@@ -60,13 +88,16 @@ export default function BackupPage() {
               Faz o download do banco de dados atual com todas as suas semanas, disciplinas,
               registros de estudo, concursos e anotações.
             </p>
-            <a
-              href="/api/backup/download"
-              download
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm"
+            <button
+              onClick={handleDownload}
+              disabled={downloadState === 'loading'}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm"
             >
-              ⬇️ Baixar backup
-            </a>
+              {downloadState === 'loading' ? '⏳ Baixando...' : '⬇️ Baixar backup'}
+            </button>
+            {downloadState === 'error' && (
+              <p className="text-sm text-red-600 mt-2">⚠️ Erro ao baixar o backup. Tente novamente.</p>
+            )}
           </div>
         </div>
       </section>
