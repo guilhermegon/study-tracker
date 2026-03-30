@@ -14,6 +14,7 @@ import concursosRouter from './routes/concursos.js'
 import materiasRouter from './routes/materias.js'
 import conteudosRouter from './routes/conteudos.js'
 import updateRouter from './routes/update.js'
+import backupRouter from './routes/backup.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -23,6 +24,7 @@ const PORT = 3001
 
 app.use(cors())
 app.use(express.json())
+app.use('/api/backup/restore', express.raw({ type: 'application/octet-stream', limit: '100mb' }))
 
 // Run migrations on startup
 runMigrations()
@@ -38,6 +40,7 @@ app.use('/api/concursos', concursosRouter)
 app.use('/api/materias', materiasRouter)
 app.use('/api/conteudos', conteudosRouter)
 app.use('/api/update', updateRouter)
+app.use('/api/backup', backupRouter)
 
 // Servir frontend (produção)
 const clientDist = join(__dirname, '../../client/dist')

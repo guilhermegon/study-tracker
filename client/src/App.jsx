@@ -8,6 +8,7 @@ import RelatorioPage from './pages/RelatorioPage'
 import NotasPage from './pages/NotasPage'
 import ConcursosPage from './pages/ConcursosPage'
 import DisciplinasPage from './pages/DisciplinasPage'
+import BackupPage from './pages/BackupPage'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/notas" element={<NotasPage />} />
             <Route path="/concursos" element={<ConcursosPage />} />
             <Route path="/disciplinas" element={<DisciplinasPage />} />
+            <Route path="/backup" element={<BackupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

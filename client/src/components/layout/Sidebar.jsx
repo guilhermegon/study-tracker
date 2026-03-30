@@ -13,6 +13,7 @@ const NAV = [
   { to: '/notas', label: 'Notas', icon: '📝' },
   { to: '/concursos', label: 'Concursos', icon: '🏆' },
   { to: '/disciplinas', label: 'Disciplinas', icon: '📖' },
+  { to: '/backup', label: 'Backup', icon: '💾' },
 ]
 
 export default function Sidebar() {
