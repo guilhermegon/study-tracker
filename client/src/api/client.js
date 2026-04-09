@@ -72,8 +72,21 @@ export const api = {
   getStudiedVsPlanned: (weekId) => request(`/dashboard/studied-vs-planned?week_id=${weekId}`),
   getSummary: (weekId) => request(`/dashboard/summary?week_id=${weekId}`),
   getTotals: (weekIds) => request(`/dashboard/totals?week_ids=${weekIds.join(',')}`),
+  getConsistency: (weekIds = []) => request(`/dashboard/consistency${weekIds.length ? '?week_ids=' + weekIds.join(',') : ''}`),
 
   // Update
   checkUpdate: () => request('/update/check'),
   applyUpdate: (version) => request('/update/apply', { method: 'POST', body: { version } }),
+
+  // Provas
+  getProvas: () => request('/provas'),
+  createProva: (data) => request('/provas', { method: 'POST', body: data }),
+  updateProva: (id, data) => request(`/provas/${id}`, { method: 'PUT', body: data }),
+  deleteProva: (id) => request(`/provas/${id}`, { method: 'DELETE' }),
+
+  // Questões (nested em prova)
+  getProvaQuestoes: (provaId) => request(`/provas/${provaId}/questoes`),
+  createQuestao: (provaId, data) => request(`/provas/${provaId}/questoes`, { method: 'POST', body: data }),
+  updateQuestao: (provaId, questaoId, data) => request(`/provas/${provaId}/questoes/${questaoId}`, { method: 'PUT', body: data }),
+  deleteQuestao: (provaId, questaoId) => request(`/provas/${provaId}/questoes/${questaoId}`, { method: 'DELETE' }),
 }

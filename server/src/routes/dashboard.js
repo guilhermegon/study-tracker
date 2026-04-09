@@ -197,4 +197,44 @@ router.get('/totals', (req, res) => {
   res.json({ summary, by_subject })
 })
 
+// GET /api/dashboard/consistency?week_ids=1,2,3  (global quando sem filtro)
+router.get('/consistency', (req, res) => {
+  const { week_ids } = req.query
+  const ids = week_ids ? week_ids.split(',').map(Number).filter(Boolean) : []
+
+  let row
+  if (ids.length > 0) {
+    const placeholders = ids.map(() => '?').join(',')
+    row = db.prepare(`
+      SELECT
+        COUNT(CASE WHEN studied_count > 0 THEN 1 END) AS dias_estudados,
+        COUNT(CASE WHEN studied_count = 0 THEN 1 END) AS dias_falhados
+      FROM (
+        SELECT week_id, dia, SUM(estudado) AS studied_count
+        FROM entries
+        WHERE week_id IN (${placeholders})
+        GROUP BY week_id, dia
+      )
+    `).get(...ids)
+  } else {
+    row = db.prepare(`
+      SELECT
+        COUNT(CASE WHEN studied_count > 0 THEN 1 END) AS dias_estudados,
+        COUNT(CASE WHEN studied_count = 0 THEN 1 END) AS dias_falhados
+      FROM (
+        SELECT week_id, dia, SUM(estudado) AS studied_count
+        FROM entries
+        GROUP BY week_id, dia
+      )
+    `).get()
+  }
+
+  const total = row.dias_estudados + row.dias_falhados
+  res.json({
+    dias_estudados: row.dias_estudados,
+    dias_falhados: row.dias_falhados,
+    percentual: total > 0 ? Math.round((row.dias_estudados / total) * 100) : 0,
+  })
+})
+
 export default router

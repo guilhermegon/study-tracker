@@ -15,6 +15,7 @@ import materiasRouter from './routes/materias.js'
 import conteudosRouter from './routes/conteudos.js'
 import updateRouter from './routes/update.js'
 import backupRouter from './routes/backup.js'
+import provasRouter from './routes/provas.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -41,6 +42,7 @@ app.use('/api/materias', materiasRouter)
 app.use('/api/conteudos', conteudosRouter)
 app.use('/api/update', updateRouter)
 app.use('/api/backup', backupRouter)
+app.use('/api/provas', provasRouter)
 
 // Servir frontend (produção)
 const clientDist = join(__dirname, '../../client/dist')

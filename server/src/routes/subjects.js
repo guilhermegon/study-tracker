@@ -11,13 +11,13 @@ router.get('/', (req, res) => {
 
 // POST /api/subjects
 router.post('/', (req, res) => {
-  const { name, total_aulas } = req.body
+  const { name, total_aulas, color } = req.body
   if (!name) return res.status(400).json({ error: 'name é obrigatório' })
 
   try {
     const { lastInsertRowid } = db.prepare(
-      'INSERT INTO subjects (name, total_aulas) VALUES (?, ?)'
-    ).run(name.trim(), total_aulas ?? null)
+      'INSERT INTO subjects (name, total_aulas, color) VALUES (?, ?, ?)'
+    ).run(name.trim(), total_aulas ?? null, color ?? null)
     res.status(201).json(db.prepare('SELECT * FROM subjects WHERE id = ?').get(lastInsertRowid))
   } catch (e) {
     if (e.message.includes('UNIQUE')) {
@@ -29,13 +29,14 @@ router.post('/', (req, res) => {
 
 // PUT /api/subjects/:id
 router.put('/:id', (req, res) => {
-  const { name, total_aulas } = req.body
+  const { name, total_aulas, color } = req.body
   const sub = db.prepare('SELECT * FROM subjects WHERE id = ?').get(req.params.id)
   if (!sub) return res.status(404).json({ error: 'Disciplina não encontrada' })
 
-  db.prepare('UPDATE subjects SET name = ?, total_aulas = ? WHERE id = ?').run(
+  db.prepare('UPDATE subjects SET name = ?, total_aulas = ?, color = ? WHERE id = ?').run(
     name ?? sub.name,
     total_aulas !== undefined ? total_aulas : sub.total_aulas,
+    color !== undefined ? color : sub.color,
     req.params.id
   )
   res.json(db.prepare('SELECT * FROM subjects WHERE id = ?').get(req.params.id))

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../api/client'
 import { useAppToast } from '../components/layout/AppShell'
 
@@ -15,13 +15,23 @@ export default function NotasPage() {
   const [selectedId, setSelectedId] = useState(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [editMode, setEditMode] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'pending' | 'saving'
+
   const titleRef = useRef(null)
+  const contentRef = useRef(null)
+  const saveTimerRef = useRef(null)
+  const selectedIdRef = useRef(null)
+  const titleRef_ = useRef('')
+  const contentRef_ = useRef('')
+
+  // keep refs in sync for use inside timer callbacks
+  useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
+  useEffect(() => { titleRef_.current = title }, [title])
+  useEffect(() => { contentRef_.current = content }, [content])
 
   useEffect(() => {
     load()
+    return () => clearTimeout(saveTimerRef.current)
   }, [])
 
   async function load() {
@@ -34,68 +44,139 @@ export default function NotasPage() {
     }
   }
 
-  function selectNote(note) {
-    if (dirty && !confirm('Descartar alterações não salvas?')) return
+  const doSave = useCallback(async (id, t, c) => {
+    if (!id) return
+    setSaveStatus('saving')
+    try {
+      const updated = await api.updateNote(id, { title: t, content: c })
+      setNotes(prev => prev.map(n => n.id === id ? updated : n))
+      setSaveStatus('saved')
+    } catch {
+      setSaveStatus('pending')
+      toast('Erro ao salvar nota', 'error')
+    }
+  }, [toast])
+
+  function scheduleAutoSave(t, c) {
+    setSaveStatus('pending')
+    clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      doSave(selectedIdRef.current, titleRef_.current, contentRef_.current)
+    }, 1500)
+  }
+
+  async function flushSave() {
+    clearTimeout(saveTimerRef.current)
+    if (saveStatus === 'pending' && selectedIdRef.current) {
+      await doSave(selectedIdRef.current, titleRef_.current, contentRef_.current)
+    }
+  }
+
+  async function selectNote(note) {
+    await flushSave()
     setSelectedId(note.id)
     setTitle(note.title)
     setContent(note.content || '')
-    setDirty(false)
-    setEditMode(false)
-  }
-
-  function toggleLine(lineIndex) {
-    const lines = content.split('\n')
-    const line = lines[lineIndex]
-    if (line.startsWith('[ ] ')) lines[lineIndex] = '[x] ' + line.slice(4)
-    else if (line.startsWith('[x] ')) lines[lineIndex] = '[ ] ' + line.slice(4)
-    const newContent = lines.join('\n')
-    setContent(newContent)
-    setDirty(true)
+    setSaveStatus('saved')
+    setTimeout(() => contentRef.current?.focus(), 50)
   }
 
   function handleTitleChange(e) {
     setTitle(e.target.value)
-    setDirty(true)
+    scheduleAutoSave(e.target.value, contentRef_.current)
   }
 
   function handleContentChange(e) {
     setContent(e.target.value)
-    setDirty(true)
+    scheduleAutoSave(titleRef_.current, e.target.value)
+  }
+
+  function handleTitleKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      contentRef.current?.focus()
+    }
+  }
+
+  function handleContentKeyDown(e) {
+    if (e.key !== 'Backspace') return
+    const ta = contentRef.current
+    const pos = ta.selectionStart
+    if (ta.selectionStart !== ta.selectionEnd) return // has selection, let default handle
+    const lines = content.split('\n')
+    let offset = 0
+    for (let i = 0; i < lines.length; i++) {
+      const lineStart = offset
+      const lineEnd = offset + lines[i].length
+      if (pos >= lineStart && pos <= lineEnd) {
+        const colInLine = pos - lineStart
+        const line = lines[i]
+        if ((line.startsWith('[ ] ') || line.startsWith('[x] ')) && colInLine === 4) {
+          e.preventDefault()
+          lines[i] = line.slice(4)
+          const newContent = lines.join('\n')
+          setContent(newContent)
+          scheduleAutoSave(titleRef_.current, newContent)
+          setTimeout(() => {
+            ta.selectionStart = lineStart
+            ta.selectionEnd = lineStart
+          }, 0)
+        }
+        break
+      }
+      offset += lines[i].length + 1
+    }
+  }
+
+  function insertCheckbox() {
+    const ta = contentRef.current
+    if (!ta) return
+    ta.focus()
+    const pos = ta.selectionStart
+    const lines = content.split('\n')
+    let offset = 0
+    for (let i = 0; i < lines.length; i++) {
+      const lineStart = offset
+      const lineEnd = offset + lines[i].length
+      if (pos >= lineStart && pos <= lineEnd) {
+        if (lines[i].startsWith('[ ] ') || lines[i].startsWith('[x] ')) break
+        lines[i] = '[ ] ' + lines[i]
+        const newContent = lines.join('\n')
+        setContent(newContent)
+        scheduleAutoSave(titleRef_.current, newContent)
+        const newPos = pos + 4
+        setTimeout(() => {
+          ta.selectionStart = newPos
+          ta.selectionEnd = newPos
+          ta.focus()
+        }, 0)
+        break
+      }
+      offset += lines[i].length + 1
+    }
   }
 
   async function handleNew() {
-    if (dirty && !confirm('Descartar alterações não salvas?')) return
+    await flushSave()
     try {
       const note = await api.createNote({ title: 'Sem título', content: '' })
       setNotes(prev => [note, ...prev])
       setSelectedId(note.id)
       setTitle(note.title)
       setContent('')
-      setDirty(false)
-      setTimeout(() => titleRef.current?.select(), 50)
+      setSaveStatus('saved')
+      setTimeout(() => {
+        titleRef.current?.select()
+      }, 50)
     } catch {
       toast('Erro ao criar nota', 'error')
-    }
-  }
-
-  async function handleSave() {
-    if (!selectedId) return
-    setSaving(true)
-    try {
-      const updated = await api.updateNote(selectedId, { title, content })
-      setNotes(prev => prev.map(n => n.id === selectedId ? updated : n))
-      setDirty(false)
-      toast('Nota salva!', 'success')
-    } catch {
-      toast('Erro ao salvar nota', 'error')
-    } finally {
-      setSaving(false)
     }
   }
 
   async function handleDelete(id, e) {
     e.stopPropagation()
     if (!confirm('Excluir esta nota?')) return
+    clearTimeout(saveTimerRef.current)
     try {
       await api.deleteNote(id)
       setNotes(prev => prev.filter(n => n.id !== id))
@@ -103,18 +184,11 @@ export default function NotasPage() {
         setSelectedId(null)
         setTitle('')
         setContent('')
-        setDirty(false)
+        setSaveStatus('saved')
       }
       toast('Nota excluída', 'success')
     } catch {
       toast('Erro ao excluir nota', 'error')
-    }
-  }
-
-  function handleKeyDown(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
-      handleSave()
     }
   }
 
@@ -165,7 +239,7 @@ export default function NotasPage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 truncate mt-0.5">
-                  {note.content ? note.content.slice(0, 60) : <span className="italic">Sem conteúdo</span>}
+                  {note.content ? note.content.replace(/\[[ x]\] /g, '').slice(0, 60) : <span className="italic">Sem conteúdo</span>}
                 </p>
                 <p className="text-xs text-gray-300 mt-1">{formatDate(note.updated_at)}</p>
               </div>
@@ -175,7 +249,7 @@ export default function NotasPage() {
       </div>
 
       {/* Editor */}
-      <div className="flex-1 flex flex-col min-w-0" onKeyDown={handleKeyDown}>
+      <div className="flex-1 flex flex-col min-w-0">
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
             <p className="text-4xl mb-3">📝</p>
@@ -188,35 +262,17 @@ export default function NotasPage() {
             <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between">
               <p className="text-xs text-gray-400">
                 {selectedNote && `Atualizado em ${formatDate(selectedNote.updated_at)}`}
-                {dirty && <span className="ml-2 text-amber-500 font-medium">● não salvo</span>}
+                {saveStatus === 'pending' && <span className="ml-2 text-amber-500 font-medium">● não salvo</span>}
+                {saveStatus === 'saving' && <span className="ml-2 text-gray-400">Salvando...</span>}
               </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setEditMode(v => !v)}
-                  className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
-                  title={editMode ? 'Visualizar' : 'Editar texto bruto'}
-                >
-                  {editMode ? '👁 Visualizar' : '✏️ Editar'}
-                </button>
-                <button
-                  onClick={() => {
-                    if (dirty && !confirm('Descartar alterações?')) return
-                    const note = notes.find(n => n.id === selectedId)
-                    if (note) { setTitle(note.title); setContent(note.content || ''); setDirty(false) }
-                  }}
-                  disabled={!dirty}
-                  className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  Descartar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={!dirty || saving}
-                  className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
+              <button
+                onClick={insertCheckbox}
+                title="Inserir checkbox na linha atual"
+                className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              >
+                <span>☑</span>
+                <span>Checkbox</span>
+              </button>
             </div>
 
             {/* Título */}
@@ -224,52 +280,20 @@ export default function NotasPage() {
               ref={titleRef}
               value={title}
               onChange={handleTitleChange}
+              onKeyDown={handleTitleKeyDown}
               placeholder="Título"
               className="px-6 pt-6 pb-2 text-2xl font-bold text-gray-800 focus:outline-none bg-transparent border-none w-full placeholder-gray-300"
             />
 
             {/* Conteúdo */}
-            {editMode ? (
-              <textarea
-                value={content}
-                onChange={handleContentChange}
-                placeholder={'Use [ ] para criar itens marcáveis\nExemplo:\n[ ] Estudar direito administrativo\n[ ] Revisar anotações'}
-                className="flex-1 px-6 py-2 text-sm text-gray-700 leading-relaxed focus:outline-none bg-transparent border-none resize-none placeholder-gray-300 font-mono"
-              />
-            ) : (
-              <div className="flex-1 overflow-y-auto px-6 py-2">
-                {content ? (
-                  content.split('\n').map((line, i) => {
-                    if (line.startsWith('[ ] ') || line.startsWith('[x] ')) {
-                      const checked = line.startsWith('[x] ')
-                      const text = line.slice(4)
-                      return (
-                        <div key={i} className="flex items-start gap-2.5 py-1">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleLine(i)}
-                            className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer shrink-0"
-                          />
-                          <span className={`text-sm leading-relaxed ${checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                            {text || '\u00A0'}
-                          </span>
-                        </div>
-                      )
-                    }
-                    return (
-                      <div key={i} className="py-1 text-sm text-gray-700 leading-relaxed min-h-[1.75rem]">
-                        {line || '\u00A0'}
-                      </div>
-                    )
-                  })
-                ) : (
-                  <p className="text-sm text-gray-300 italic mt-1">
-                    Clique em "✏️ Editar" para escrever. Use <code className="bg-gray-100 px-1 rounded">[ ] texto</code> para criar itens marcáveis.
-                  </p>
-                )}
-              </div>
-            )}
+            <textarea
+              ref={contentRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={handleContentKeyDown}
+              placeholder={'Comece a escrever...\nUse o botão ☑ Checkbox ou digite [ ] para criar itens marcáveis.'}
+              className="flex-1 px-6 py-2 text-sm text-gray-700 leading-relaxed focus:outline-none bg-transparent border-none resize-none placeholder-gray-300"
+            />
           </>
         )}
       </div>

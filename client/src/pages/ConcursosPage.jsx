@@ -33,7 +33,7 @@ export default function ConcursosPage() {
   // Concurso form
   const [showConcursoForm, setShowConcursoForm] = useState(false)
   const [editingConcursoId, setEditingConcursoId] = useState(null)
-  const [concursoForm, setConcursoForm] = useState({ nome: '', banca: '', data_prova: '' })
+  const [concursoForm, setConcursoForm] = useState({ nome: '', banca: '', cargo: '', link: '', data_prova: '' })
 
   // Disciplina picker
   const [showSubjectPicker, setShowSubjectPicker] = useState(false)
@@ -73,7 +73,11 @@ export default function ConcursosPage() {
 
   async function loadMaterias(id) {
     setLoading(true)
-    try { setMaterias(await api.getMaterias(id)) }
+    try {
+      const data = await api.getMaterias(id)
+      setMaterias(data)
+      setCollapsed(new Set(data.map(m => m.id)))
+    }
     catch { toast('Erro ao carregar matérias', 'error') }
     finally { setLoading(false) }
   }
@@ -106,14 +110,14 @@ export default function ConcursosPage() {
   // ── Concurso CRUD ──────────────────────────────────────────────────────────
   function openNewConcurso() {
     setEditingConcursoId(null)
-    setConcursoForm({ nome: '', banca: '', data_prova: '' })
+    setConcursoForm({ nome: '', banca: '', cargo: '', link: '', data_prova: '' })
     setShowConcursoForm(true)
   }
 
   function openEditConcurso(c, e) {
     e.stopPropagation()
     setEditingConcursoId(c.id)
-    setConcursoForm({ nome: c.nome, banca: c.banca || '', data_prova: c.data_prova || '' })
+    setConcursoForm({ nome: c.nome, banca: c.banca || '', cargo: c.cargo || '', link: c.link || '', data_prova: c.data_prova || '' })
     setShowConcursoForm(true)
   }
 
@@ -234,7 +238,7 @@ export default function ConcursosPage() {
           <h3 className="text-sm font-semibold text-blue-700 mb-4">
             {editingConcursoId ? 'Editar Concurso' : 'Novo Concurso'}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="label">Nome *</label>
               <input className="input" value={concursoForm.nome}
@@ -249,10 +253,22 @@ export default function ConcursosPage() {
                 placeholder="ex: CESPE" />
             </div>
             <div>
+              <label className="label">Cargo</label>
+              <input className="input" value={concursoForm.cargo}
+                onChange={e => setConcursoForm(f => ({ ...f, cargo: e.target.value }))}
+                placeholder="ex: Analista" />
+            </div>
+            <div>
               <label className="label">Data da prova</label>
               <input type="date" className="input" value={concursoForm.data_prova}
                 onChange={e => setConcursoForm(f => ({ ...f, data_prova: e.target.value }))} />
             </div>
+          </div>
+          <div className="mt-3">
+            <label className="label">Link do edital / inscrição</label>
+            <input className="input w-full" value={concursoForm.link}
+              onChange={e => setConcursoForm(f => ({ ...f, link: e.target.value }))}
+              placeholder="https://..." />
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={handleSaveConcurso} className="btn-primary"
@@ -315,10 +331,30 @@ export default function ConcursosPage() {
                     <p className="text-sm font-semibold text-gray-700">{selectedConcurso.banca}</p>
                   </div>
                 )}
+                {selectedConcurso.cargo && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Cargo</p>
+                    <p className="text-sm font-semibold text-gray-700">{selectedConcurso.cargo}</p>
+                  </div>
+                )}
                 {selectedConcurso.data_prova && (
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">Data da prova</p>
                     <p className="text-sm font-semibold text-gray-700">{formatDate(selectedConcurso.data_prova)}</p>
+                  </div>
+                )}
+                {selectedConcurso.link && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Link</p>
+                    <a
+                      href={selectedConcurso.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                      title={selectedConcurso.link}
+                    >
+                      🔗 <span className="max-w-[200px] truncate">{selectedConcurso.link}</span>
+                    </a>
                   </div>
                 )}
                 <div className="flex-1 min-w-48">
@@ -338,6 +374,23 @@ export default function ConcursosPage() {
                 <div className="text-center py-16 text-gray-400">Carregando...</div>
               ) : (
                 <div className="space-y-3">
+                  {materias.length > 0 && (
+                    <div className="flex justify-end gap-2 mb-1">
+                      <button
+                        onClick={() => setCollapsed(new Set())}
+                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                      >
+                        ↕ Expandir todos
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        onClick={() => setCollapsed(new Set(materias.map(m => m.id)))}
+                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                      >
+                        ↕ Recolher todos
+                      </button>
+                    </div>
+                  )}
                   {materias.map(materia => {
                     const concluidos = materia.conteudos.filter(c => c.concluido).length
                     return (

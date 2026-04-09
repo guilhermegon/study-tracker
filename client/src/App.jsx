@@ -9,6 +9,7 @@ import NotasPage from './pages/NotasPage'
 import ConcursosPage from './pages/ConcursosPage'
 import DisciplinasPage from './pages/DisciplinasPage'
 import BackupPage from './pages/BackupPage'
+import ProvasPage from './pages/ProvasPage'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/concursos" element={<ConcursosPage />} />
             <Route path="/disciplinas" element={<DisciplinasPage />} />
             <Route path="/backup" element={<BackupPage />} />
+            <Route path="/provas" element={<ProvasPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

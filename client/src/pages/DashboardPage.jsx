@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const [compareIds, setCompareIds] = useState([])
 
   const allWeekIds = compareIds.length > 0 ? [...new Set([selectedWeekId, ...compareIds])] : [selectedWeekId]
-  const { progress, accuracy, accuracyByWeek, comparison, studiedVsPlanned, loading } = useDashboard(selectedWeekId, allWeekIds)
+  const { progress, accuracy, accuracyByWeek, comparison, studiedVsPlanned, consistency, loading } = useDashboard(selectedWeekId, allWeekIds)
 
   function toggleCompare(id) {
     setCompareIds(prev =>
@@ -71,6 +71,38 @@ export default function DashboardPage() {
                 {w.name}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Constância nos Estudos — global, não depende de loading de semana */}
+      {consistency && (
+        <div className="card">
+          <h2 className="text-base font-semibold text-gray-700 mb-1">Constância nos Estudos</h2>
+          <p className="text-xs text-gray-400 mb-4">Total histórico de dias com e sem estudo registrado</p>
+          <div className="flex items-center gap-6">
+            <div className="flex gap-4">
+              <div className="text-center px-4 py-3 rounded-lg bg-green-50 border border-green-100">
+                <div className="text-2xl font-bold text-green-600">{consistency.dias_estudados}</div>
+                <div className="text-xs text-green-700 mt-0.5">dias estudados</div>
+              </div>
+              <div className="text-center px-4 py-3 rounded-lg bg-red-50 border border-red-100">
+                <div className="text-2xl font-bold text-red-500">{consistency.dias_falhados}</div>
+                <div className="text-xs text-red-600 mt-0.5">dias falhados</div>
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-500">Constância</span>
+                <span className="text-sm font-bold text-gray-700">{consistency.percentual}%</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-3 rounded-full bg-green-500 transition-all"
+                  style={{ width: `${consistency.percentual}%` }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
