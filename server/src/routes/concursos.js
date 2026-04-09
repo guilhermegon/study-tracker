@@ -10,11 +10,11 @@ router.get('/', (req, res) => {
 
 // POST /api/concursos
 router.post('/', (req, res) => {
-  const { nome, banca, data_prova } = req.body
+  const { nome, banca, cargo, link, data_prova } = req.body
   if (!nome?.trim()) return res.status(400).json({ error: 'nome é obrigatório' })
   const { lastInsertRowid } = db.prepare(
-    'INSERT INTO concursos (nome, banca, data_prova) VALUES (?, ?, ?)'
-  ).run(nome.trim(), banca?.trim() || null, data_prova || null)
+    'INSERT INTO concursos (nome, banca, cargo, link, data_prova) VALUES (?, ?, ?, ?, ?)'
+  ).run(nome.trim(), banca?.trim() || null, cargo?.trim() || null, link?.trim() || null, data_prova || null)
   res.status(201).json(db.prepare('SELECT * FROM concursos WHERE id = ?').get(lastInsertRowid))
 })
 
@@ -22,10 +22,12 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const c = db.prepare('SELECT * FROM concursos WHERE id = ?').get(req.params.id)
   if (!c) return res.status(404).json({ error: 'Concurso não encontrado' })
-  const { nome, banca, data_prova } = req.body
-  db.prepare('UPDATE concursos SET nome = ?, banca = ?, data_prova = ? WHERE id = ?').run(
+  const { nome, banca, cargo, link, data_prova } = req.body
+  db.prepare('UPDATE concursos SET nome = ?, banca = ?, cargo = ?, link = ?, data_prova = ? WHERE id = ?').run(
     nome?.trim() ?? c.nome,
     banca !== undefined ? (banca?.trim() || null) : c.banca,
+    cargo !== undefined ? (cargo?.trim() || null) : c.cargo,
+    link !== undefined ? (link?.trim() || null) : c.link,
     data_prova !== undefined ? (data_prova || null) : c.data_prova,
     req.params.id
   )
@@ -46,7 +48,7 @@ router.get('/:id/materias', (req, res) => {
     FROM concurso_subjects cs
     JOIN subjects s ON s.id = cs.subject_id
     WHERE cs.concurso_id = ?
-    ORDER BY cs.rowid
+    ORDER BY s.name COLLATE NOCASE
   `).all(req.params.id)
   const result = links.map(cs => ({
     ...cs,

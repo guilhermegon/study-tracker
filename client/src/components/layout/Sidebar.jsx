@@ -4,6 +4,7 @@ import { useWeekContext } from '../../store/weekContext'
 import WeekFormModal from '../weeks/WeekFormModal'
 import DuplicateWeekModal from '../weeks/DuplicateWeekModal'
 import { api } from '../../api/client'
+import packageJson from '../../../package.json'
 
 const NAV = [
   { to: '/', label: 'Início', icon: '🏠' },
@@ -13,6 +14,7 @@ const NAV = [
   { to: '/notas', label: 'Notas', icon: '📝' },
   { to: '/concursos', label: 'Concursos', icon: '🏆' },
   { to: '/disciplinas', label: 'Disciplinas', icon: '📖' },
+  { to: '/provas', label: 'Provas', icon: '📝' },
   { to: '/backup', label: 'Backup', icon: '💾' },
 ]
 
@@ -125,7 +127,7 @@ export default function Sidebar() {
         </nav>
 
         <div className="px-4 py-3 border-t border-gray-100">
-          <p className="text-xs text-gray-300 text-center">Study Tracker v1.0</p>
+          <p className="text-xs text-gray-300 text-center">Study Tracker v{packageJson.version}</p>
         </div>
       </aside>
 

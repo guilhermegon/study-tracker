@@ -6,8 +6,19 @@ import { api } from '../api/client'
 import { useAppToast } from '../components/layout/AppShell'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { getSubjectColor } from '../utils/subjectColors'
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+const DIA_COLORS = {
+  Seg: { hex: '#3b82f6', text: 'text-blue-600',   dot: 'bg-blue-500'   },
+  Ter: { hex: '#10b981', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+  Qua: { hex: '#8b5cf6', text: 'text-violet-600',  dot: 'bg-violet-500'  },
+  Qui: { hex: '#f59e0b', text: 'text-amber-600',   dot: 'bg-amber-500'   },
+  Sex: { hex: '#f43f5e', text: 'text-rose-600',    dot: 'bg-rose-500'    },
+  Sáb: { hex: '#14b8a6', text: 'text-teal-600',    dot: 'bg-teal-500'    },
+  Dom: { hex: '#f97316', text: 'text-orange-600',  dot: 'bg-orange-500'  },
+}
 
 const toForm = (e) => ({
   subject_id: String(e.subject_id),
@@ -79,8 +90,8 @@ export default function WeeklyViewPage() {
   function getOrderedEntries(dia, list) {
     const order = customOrder[dia]
     if (!order) return list
-    const ordered = order.map(sid => list.find(e => e.subject_id === sid)).filter(Boolean)
-    const rest = list.filter(e => !order.includes(e.subject_id))
+    const ordered = order.map(eid => list.find(e => e.id === eid)).filter(Boolean)
+    const rest = list.filter(e => !order.includes(e.id))
     return [...ordered, ...rest]
   }
 
@@ -113,7 +124,7 @@ export default function WeeklyViewPage() {
     if (targetDia === dia) {
       // Same day: reorder
       if (from === to) return
-      const ids = orderedList.map(e => e.subject_id)
+      const ids = orderedList.map(e => e.id)
       const [moved] = ids.splice(from, 1)
       ids.splice(to, 0, moved)
       setCustomOrder(prev => ({ ...prev, [dia]: ids }))
@@ -125,10 +136,10 @@ export default function WeeklyViewPage() {
       setSaving(true)
       try {
         await api.updateEntry(movedEntry.id, { dia: targetDia })
-        const sourceIds = orderedList.map(e => e.subject_id).filter(sid => sid !== movedEntry.subject_id)
+        const sourceIds = orderedList.map(e => e.id).filter(eid => eid !== movedEntry.id)
         const targetOrdered = getOrderedEntries(targetDia, grouped[targetDia] || [])
-        const targetIds = targetOrdered.map(e => e.subject_id)
-        targetIds.splice(to, 0, movedEntry.subject_id)
+        const targetIds = targetOrdered.map(e => e.id)
+        targetIds.splice(to, 0, movedEntry.id)
         setCustomOrder(prev => ({ ...prev, [dia]: sourceIds, [targetDia]: targetIds }))
         localStorage.setItem(`study-order-${selectedWeekId}-${dia}`, JSON.stringify(sourceIds))
         localStorage.setItem(`study-order-${selectedWeekId}-${targetDia}`, JSON.stringify(targetIds))
@@ -311,7 +322,7 @@ export default function WeeklyViewPage() {
     try {
       const el = printRef.current
       el.classList.add('printing')
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' })
       el.classList.remove('printing')
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'b4' })
@@ -330,7 +341,7 @@ export default function WeeklyViewPage() {
         sliceCanvas.width = canvas.width
         sliceCanvas.height = srcH
         sliceCanvas.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
-        pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', 10, y, imgW, sliceH)
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.82), 'JPEG', 10, y, imgW, sliceH)
         remainH -= sliceH
         if (remainH > 0) { pdf.addPage(); y = 10 }
       }
@@ -460,7 +471,8 @@ export default function WeeklyViewPage() {
             return (
               <div key={dia} onDragEnter={() => setDragOverDia(dia)} onDragOver={e => e.preventDefault()}>
                 <div className="mb-2 flex items-center gap-3 flex-wrap">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                  <h2 className={`text-sm font-semibold uppercase tracking-wide flex items-center gap-2 ${DIA_COLORS[dia].text}`}>
+                    <span className={`w-2.5 h-2.5 rounded-full ${DIA_COLORS[dia].dot}`} />
                     <span>{dia}</span>
                     <span className="text-xs font-normal text-gray-400">
                       ({dayEntries.filter(e => e.estudado).length}/{dayEntries.length} estudadas)
@@ -533,6 +545,8 @@ export default function WeeklyViewPage() {
                       {ordered.map((e, idx) => {
                         const isDragTarget = dragOverIdx === `${dia}-${idx}`
                         const isEditing = editEntry?.id === e.id
+                        const savedColor = weekSubjects.find(s => s.id === e.subject_id)?.color ?? null
+                        const subjectColor = getSubjectColor(e.subject_id, savedColor)
                         return (
                           <tr
                             key={e.id}
@@ -542,7 +556,11 @@ export default function WeeklyViewPage() {
                             onDragEnd={() => handleDragEnd(dia, ordered)}
                             onDragOver={ev => ev.preventDefault()}
                             onKeyDown={isEditing ? handleKeyDown : undefined}
-                            className={`group transition-colors ${!e.estudado && !isEditing ? 'opacity-50' : ''} ${isDragTarget ? 'bg-blue-50 border-t-2 border-blue-300' : isEditing ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+                            className={`group transition-colors ${!e.estudado && !isEditing ? 'opacity-50' : ''} ${isDragTarget ? 'border-t-2 border-blue-300' : ''} hover:brightness-95`}
+                            style={{
+                              backgroundColor: isDragTarget ? '#eff6ff' : isEditing ? '#eff6ff' : subjectColor.rowBg,
+                              boxShadow: `inset 4px 0 0 ${subjectColor.hex}`,
+                            }}
                           >
                             {/* Drag handle */}
                             <td className="px-2 py-2 no-print text-gray-300 hover:text-gray-500 text-center select-none">
@@ -560,14 +578,16 @@ export default function WeeklyViewPage() {
                             </td>
 
                             {/* Disciplina */}
-                            <td className="px-2 py-2 font-medium text-gray-800">
+                            <td className="px-2 py-2">
                               {isEditing
                                 ? <select value={editForm.subject_id}
                                     onChange={ev => setField('subject_id', ev.target.value)}
                                     className={ci}>
                                     {weekSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                   </select>
-                                : e.subject_name
+                                : <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${subjectColor.badge}`}>
+                                    {e.subject_name}
+                                  </span>
                               }
                             </td>
 

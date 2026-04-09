@@ -86,6 +86,50 @@ export function runMigrations() {
     db.exec('ALTER TABLE entries ADD COLUMN total_aulas INTEGER')
   } catch {}
 
+  // Adiciona color em subjects caso não exista (migração incremental)
+  try {
+    db.exec('ALTER TABLE subjects ADD COLUMN color TEXT')
+  } catch {}
+
+  // Adiciona cargo em concursos caso não exista (migração incremental)
+  try {
+    db.exec('ALTER TABLE concursos ADD COLUMN cargo TEXT')
+  } catch {}
+
+  // Adiciona link em concursos caso não exista (migração incremental)
+  try {
+    db.exec('ALTER TABLE concursos ADD COLUMN link TEXT')
+  } catch {}
+
+  // Tabelas de Provas / Questões
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS provas (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome       TEXT NOT NULL,
+      tipo       TEXT NOT NULL DEFAULT 'prova',
+      anula      INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS prova_concursos (
+      prova_id    INTEGER NOT NULL REFERENCES provas(id) ON DELETE CASCADE,
+      concurso_id INTEGER NOT NULL REFERENCES concursos(id) ON DELETE CASCADE,
+      PRIMARY KEY (prova_id, concurso_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS questoes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      prova_id   INTEGER NOT NULL REFERENCES provas(id) ON DELETE CASCADE,
+      subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+      nome       TEXT NOT NULL DEFAULT '',
+      marcada    TEXT NOT NULL DEFAULT '',
+      gabarito   TEXT NOT NULL DEFAULT '',
+      acertou    INTEGER NOT NULL DEFAULT 0,
+      branco     INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `)
+
   // Persiste ordem drag-and-drop das disciplinas por semana/dia
   db.exec(`
     CREATE TABLE IF NOT EXISTS week_day_orders (

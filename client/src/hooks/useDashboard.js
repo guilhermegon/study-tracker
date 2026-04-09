@@ -7,6 +7,7 @@ export function useDashboard(weekId, weekIds = []) {
   const [accuracyByWeek, setAccuracyByWeek] = useState([])
   const [comparison, setComparison] = useState([])
   const [studiedVsPlanned, setStudiedVsPlanned] = useState([])
+  const [consistency, setConsistency] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -20,15 +21,17 @@ export function useDashboard(weekId, weekIds = []) {
       Promise.all(ids.map(id => api.getAccuracy(id).then(rows => ({ weekId: id, rows })))),
       api.getComparison(ids),
       api.getStudiedVsPlanned(weekId),
-    ]).then(([prog, acc, accByWeek, comp, svp]) => {
+      api.getConsistency(weekIds.length > 0 ? ids : []),
+    ]).then(([prog, acc, accByWeek, comp, svp, cons]) => {
       setProgress(prog)
       setAccuracy(acc)
       setAccuracyByWeek(accByWeek)
       setComparison(comp)
       setStudiedVsPlanned(svp)
+      setConsistency(cons)
     }).catch(console.error)
       .finally(() => setLoading(false))
   }, [weekId, JSON.stringify(weekIds)])
 
-  return { progress, accuracy, accuracyByWeek, comparison, studiedVsPlanned, loading }
+  return { progress, accuracy, accuracyByWeek, comparison, studiedVsPlanned, consistency, loading }
 }
