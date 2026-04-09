@@ -78,6 +78,13 @@ if [ -f "$BACKUP_FILE" ]; then
   echo "Banco de dados restaurado."
 fi
 
+# Executar migrações no banco restaurado
+echo "Executando migrações no banco de dados..."
+cd server
+node -e "import('./src/db/migrations.js').then(m => m.runMigrations()).then(() => console.log('Migrações executadas com sucesso.')).catch(err => { console.error('Erro nas migrações:', err); process.exit(1); })"
+cd ..
+echo "Migrações concluídas."
+
 # Instalar dependências e compilar
 echo ""
 echo "Instalando dependências..."
