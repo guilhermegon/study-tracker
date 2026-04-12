@@ -91,7 +91,7 @@ export default function BackupPage() {
             <button
               onClick={handleDownload}
               disabled={downloadState === 'loading'}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm"
+              className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm"
             >
               {downloadState === 'loading' ? '⏳ Baixando...' : '⬇️ Baixar backup'}
             </button>
@@ -131,7 +131,7 @@ export default function BackupPage() {
                   />
                   <label
                     htmlFor="backup-file-input"
-                    className="cursor-pointer border border-gray-300 hover:border-blue-400 bg-gray-50 hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                    className="cursor-pointer border border-gray-300 hover:border-teal-400 bg-gray-50 hover:bg-teal-50 text-gray-600 hover:text-teal-600 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
                   >
                     Selecionar arquivo .db
                   </label>

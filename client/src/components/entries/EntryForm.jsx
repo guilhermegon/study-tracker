@@ -123,7 +123,7 @@ export default function EntryForm({ weekId, entry = null, defaultDia = 'Seg', on
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" checked={form.estudado}
             onChange={e => set('estudado', e.target.checked)}
-            className="w-4 h-4 rounded accent-blue-600" />
+            className="w-4 h-4 rounded accent-teal-600" />
           <span className="text-sm font-medium text-gray-700">Estudei esta disciplina hoje</span>
         </label>
       </div>

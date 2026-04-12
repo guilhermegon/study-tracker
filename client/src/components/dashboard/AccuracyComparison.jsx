@@ -3,7 +3,7 @@ import {
   ReferenceLine, ResponsiveContainer, Legend, LabelList,
 } from 'recharts'
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4']
+const COLORS = ['#0d9488', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4']
 
 function shortName(name) {
   return name.length > 14 ? name.substring(0, 12) + '…' : name

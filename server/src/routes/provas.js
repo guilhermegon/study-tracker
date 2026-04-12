@@ -93,10 +93,11 @@ router.post('/:id/questoes', (req, res) => {
     gabarito = '',
     acertou = false,
     branco = false,
+    observacoes = '',
   } = req.body
 
   const { lastInsertRowid } = db.prepare(
-    'INSERT INTO questoes (prova_id, subject_id, nome, marcada, gabarito, acertou, branco) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO questoes (prova_id, subject_id, nome, marcada, gabarito, acertou, branco, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     req.params.id,
     subject_id || null,
@@ -104,7 +105,8 @@ router.post('/:id/questoes', (req, res) => {
     String(marcada).slice(0, 1).toUpperCase(),
     String(gabarito).slice(0, 1).toUpperCase(),
     branco ? 0 : (acertou ? 1 : 0),
-    branco ? 1 : 0
+    branco ? 1 : 0,
+    observacoes || ''
   )
 
   const q = db.prepare(`
@@ -128,13 +130,14 @@ router.put('/:provaId/questoes/:questaoId', (req, res) => {
     gabarito = q.gabarito,
     acertou = q.acertou,
     branco = q.branco,
+    observacoes = q.observacoes ?? '',
   } = req.body
 
   const blancoVal = branco ? 1 : 0
   const acertouVal = blancoVal ? 0 : (acertou ? 1 : 0)
 
   db.prepare(
-    'UPDATE questoes SET subject_id=?, nome=?, marcada=?, gabarito=?, acertou=?, branco=? WHERE id=?'
+    'UPDATE questoes SET subject_id=?, nome=?, marcada=?, gabarito=?, acertou=?, branco=?, observacoes=? WHERE id=?'
   ).run(
     subject_id || null,
     nome,
@@ -142,6 +145,7 @@ router.put('/:provaId/questoes/:questaoId', (req, res) => {
     String(gabarito).slice(0, 1).toUpperCase(),
     acertouVal,
     blancoVal,
+    observacoes || '',
     req.params.questaoId
   )
 

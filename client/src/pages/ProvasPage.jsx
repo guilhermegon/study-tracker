@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import { useAppToast } from '../components/layout/AppShell'
 import Modal from '../components/shared/Modal'
+import { exportPdf } from '../utils/exportPdf'
 
 const EMPTY_PROVA = { nome: '', tipo: 'prova', anula: false, concurso_ids: [] }
-const EMPTY_QUESTAO = { subject_id: '', nome: '', marcada: '', gabarito: '', acertou: false, branco: false }
+const EMPTY_QUESTAO = { subject_id: '', nome: '', marcada: '', gabarito: '', acertou: false, branco: false, observacoes: '' }
 
 function pctOf(n, total) {
   if (!total || total === 0) return '0%'
@@ -97,11 +98,11 @@ function ProvaModal({ open, onClose, editing, concursos, onSaved }) {
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
-            className="w-4 h-4 accent-blue-600"
+            className="w-4 h-4 accent-teal-600"
             checked={form.anula}
             onChange={e => setForm(p => ({ ...p, anula: e.target.checked }))}
           />
-          <span className="text-sm text-gray-700">Questão errada anula questão certa</span>
+          <span className="text-sm text-gray-700">Uma questão errada anula uma questão certa</span>
         </label>
 
         {concursos.length > 0 && (
@@ -117,8 +118,8 @@ function ProvaModal({ open, onClose, editing, concursos, onSaved }) {
                     onClick={() => toggleConcurso(c.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                       sel
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
                     }`}
                   >
                     {sel ? '✓ ' : ''}{c.nome}
@@ -147,7 +148,7 @@ function ProvaModal({ open, onClose, editing, concursos, onSaved }) {
 }
 
 // ── Questão Row (view) ────────────────────────────────────────────────────────
-function QuestaoViewRow({ q, idx, onEdit, onDelete }) {
+function QuestaoViewRow({ q, idx, onEdit, onDelete, anula }) {
   return (
     <tr className="group hover:bg-gray-50 transition-colors">
       <td className="px-2 py-1.5 text-center text-xs text-gray-400 w-8">{idx}</td>
@@ -159,12 +160,14 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete }) {
       <td className="px-2 py-1.5 text-center w-16">
         <span className="font-mono text-sm font-bold text-gray-800">{q.gabarito || <span className="text-gray-300">—</span>}</span>
       </td>
-      <td className="px-2 py-1.5 text-center w-16">
-        {q.branco
-          ? <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Branco</span>
-          : <span className="text-gray-200 text-xs">—</span>
-        }
-      </td>
+      {anula && (
+        <td className="px-2 py-1.5 text-center w-16">
+          {q.branco
+            ? <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Branco</span>
+            : <span className="text-gray-200 text-xs">—</span>
+          }
+        </td>
+      )}
       <td className="px-2 py-1.5 text-center w-16">
         {!q.branco && (
           q.acertou
@@ -172,9 +175,12 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete }) {
             : <span className="text-red-500 font-bold text-base">✗</span>
         )}
       </td>
-      <td className="px-2 py-1.5 text-right w-16">
+      <td className="px-3 py-1.5 text-xs text-gray-500 max-w-0 truncate" title={q.observacoes || ''}>
+        {q.observacoes || <span className="text-gray-200">—</span>}
+      </td>
+      <td className="px-2 py-1.5 text-right w-16 no-print">
         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => onEdit(q)} className="text-gray-400 hover:text-blue-600 px-1.5 py-1 rounded text-xs transition-colors" title="Editar">✏️</button>
+          <button onClick={() => onEdit(q)} className="text-gray-400 hover:text-teal-600 px-1.5 py-1 rounded text-xs transition-colors" title="Editar">✏️</button>
           <button onClick={() => onDelete(q.id)} className="text-gray-400 hover:text-red-600 px-1.5 py-1 rounded text-xs transition-colors" title="Excluir">🗑</button>
         </div>
       </td>
@@ -183,7 +189,7 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete }) {
 }
 
 // ── Questão Row (edit / add) ──────────────────────────────────────────────────
-function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx }) {
+function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx, anula }) {
   const inputRef   = useRef(null)
   const marcadaRef = useRef(null)
   useEffect(() => {
@@ -208,11 +214,11 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
   const handleKeyDown = e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel() }
 
   return (
-    <tr className="bg-blue-50">
+    <tr className="bg-teal-50">
       <td className="px-2 py-1.5 text-center text-xs text-gray-400 w-8">{idx}</td>
       <td className="px-2 py-1.5 w-[140px]">
         <select
-          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
           value={form.subject_id}
           onChange={e => set('subject_id', e.target.value)}
           onKeyDown={handleKeyDown}
@@ -224,7 +230,7 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
       <td className="px-2 py-1.5">
         <input
           ref={inputRef}
-          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
           placeholder="Q1..."
           maxLength={5}
           value={form.nome}
@@ -234,7 +240,7 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
       </td>
       <td className="px-2 py-1.5 w-16">
         <input
-          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 text-center font-mono uppercase focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 text-center font-mono uppercase focus:outline-none focus:ring-1 focus:ring-teal-400"
           ref={marcadaRef}
           maxLength={1}
           placeholder="A"
@@ -245,7 +251,7 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
       </td>
       <td className="px-2 py-1.5 w-16">
         <input
-          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 text-center font-mono uppercase focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 text-center font-mono uppercase focus:outline-none focus:ring-1 focus:ring-teal-400"
           maxLength={1}
           placeholder="A"
           value={form.gabarito}
@@ -253,25 +259,36 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
           onKeyDown={handleKeyDown}
         />
       </td>
-      <td className="px-2 py-1.5 text-center w-16">
-        <input
-          type="checkbox"
-          className="w-4 h-4 accent-gray-500"
-          checked={form.branco}
-          onChange={e => set('branco', e.target.checked)}
-          onKeyDown={handleKeyDown}
-          title="Branco"
-        />
-      </td>
+      {anula && (
+        <td className="px-2 py-1.5 text-center w-16">
+          <input
+            type="checkbox"
+            className="w-4 h-4 accent-gray-500"
+            checked={form.branco}
+            onChange={e => set('branco', e.target.checked)}
+            onKeyDown={handleKeyDown}
+            title="Branco"
+          />
+        </td>
+      )}
       <td className="px-2 py-1.5 text-center w-16">
         <input
           type="checkbox"
           className="w-4 h-4 accent-green-600"
           checked={form.acertou}
-          disabled={form.branco}
+          disabled={anula && form.branco}
           onChange={e => set('acertou', e.target.checked)}
           onKeyDown={handleKeyDown}
           title="Acertou"
+        />
+      </td>
+      <td className="px-2 py-1.5">
+        <input
+          className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
+          placeholder="Observações..."
+          value={form.observacoes}
+          onChange={e => set('observacoes', e.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </td>
       <td className="px-2 py-1.5 w-16">
@@ -287,6 +304,8 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProvasPage() {
   const toast = useAppToast()
+  const printRef = useRef(null)
+  const [exporting, setExporting] = useState(false)
 
   const [provas, setProvas]         = useState([])
   const [selectedProvaId, setSelectedProvaId] = useState(null)
@@ -304,6 +323,8 @@ export default function ProvasPage() {
   const [editQForm, setEditQForm]   = useState({ ...EMPTY_QUESTAO })
   const [addingQ, setAddingQ]       = useState(false)
   const [newQForm, setNewQForm]     = useState({ ...EMPTY_QUESTAO })
+  const [sortBy, setSortBy]         = useState('nome')
+  const [sortDir, setSortDir]       = useState('asc')
 
   // Load
   useEffect(() => {
@@ -341,9 +362,21 @@ export default function ProvasPage() {
       const a = qs.filter(q => !q.branco && q.acertou).length
       const e = qs.filter(q => !q.branco && !q.acertou).length
       const b = qs.filter(q => q.branco).length
-      return { id: s.id, nome: s.name, qtd: qs.length, acertos: a, erros: e, brancos: b }
+      const pct = qs.length ? a / qs.length : 0
+      return { id: s.id, nome: s.name, qtd: qs.length, acertos: a, erros: e, brancos: b, pct }
     })
     .filter(Boolean)
+
+  function handleSort(col) {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
+
+  const sortedBySubject = [...bySubject].sort((a, b) => {
+    const mul = sortDir === 'asc' ? 1 : -1
+    if (sortBy === 'nome') return mul * a.nome.localeCompare(b.nome, 'pt-BR')
+    return mul * (a[sortBy] - b[sortBy])
+  })
 
   // ── Prova CRUD ──────────────────────────────────────────────────────────────
   function handleProvaSaved(result, isEdit) {
@@ -354,6 +387,20 @@ export default function ProvasPage() {
       setSelectedProvaId(result.id)
     }
     toast(isEdit ? 'Prova atualizada!' : 'Prova criada!', 'success')
+  }
+
+  async function handleExportPdf() {
+    if (!printRef.current) return
+    setExporting(true)
+    try {
+      const filename = selectedProva ? `${selectedProva.nome.replace(/\s+/g, '-')}.pdf` : 'prova.pdf'
+      await exportPdf(printRef.current, filename)
+      toast('PDF exportado com sucesso!', 'success')
+    } catch {
+      toast('Erro ao exportar PDF', 'error')
+    } finally {
+      setExporting(false)
+    }
   }
 
   async function handleDeleteProva(id, e) {
@@ -382,6 +429,7 @@ export default function ProvasPage() {
       gabarito: q.gabarito ?? '',
       acertou: q.acertou,
       branco: q.branco,
+      observacoes: q.observacoes ?? '',
     })
   }
 
@@ -427,18 +475,28 @@ export default function ProvasPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      <style>{`.printing .no-print { display: none !important; }`}</style>
       {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between no-print">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Provas</h1>
           <p className="text-sm text-gray-500 mt-0.5">Gerencie provas e simulados com gabarito e resultado por disciplina.</p>
         </div>
-        <button
-          onClick={() => { setEditingProva(null); setProvaModal(true) }}
-          className="btn-primary"
-        >
-          + Nova Prova
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportPdf}
+            disabled={exporting || !selectedProva}
+            className="btn-secondary disabled:opacity-40"
+          >
+            {exporting ? 'Exportando...' : '⬇ Exportar PDF'}
+          </button>
+          <button
+            onClick={() => { setEditingProva(null); setProvaModal(true) }}
+            className="btn-primary"
+          >
+            + Nova Prova
+          </button>
+        </div>
       </div>
 
       {/* Prova chips */}
@@ -450,32 +508,32 @@ export default function ProvasPage() {
         </div>
       ) : (
         <>
-          <div className="flex gap-2 flex-wrap mb-6">
-            {provas.map(p => (
+          <div className="flex gap-2 flex-wrap mb-6 no-print">
+            {[...provas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })).map(p => (
               <div
                 key={p.id}
                 onClick={() => setSelectedProvaId(p.id)}
                 className={`flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full border text-sm font-medium cursor-pointer transition-colors select-none ${
                   selectedProvaId === p.id
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'
                 }`}
               >
                 <span className="mr-0.5">{p.tipo === 'simulado' ? '📝' : '📋'}</span>
                 <span>{p.nome}</span>
                 {p.anula && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ml-1 ${selectedProvaId === p.id ? 'bg-blue-500 text-blue-100' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ml-1 ${selectedProvaId === p.id ? 'bg-teal-500 text-teal-100' : 'bg-amber-100 text-amber-700'}`}>
                     anula
                   </span>
                 )}
                 <button
                   onClick={e => { e.stopPropagation(); setEditingProva(p); setProvaModal(true) }}
-                  className={`ml-1 px-1 py-0.5 rounded transition-colors text-xs ${selectedProvaId === p.id ? 'hover:bg-blue-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                  className={`ml-1 px-1 py-0.5 rounded transition-colors text-xs ${selectedProvaId === p.id ? 'hover:bg-teal-500' : 'hover:bg-gray-100 text-gray-400'}`}
                   title="Editar"
                 >✏️</button>
                 <button
                   onClick={e => handleDeleteProva(p.id, e)}
-                  className={`px-1 py-0.5 rounded transition-colors text-xs ${selectedProvaId === p.id ? 'hover:bg-blue-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                  className={`px-1 py-0.5 rounded transition-colors text-xs ${selectedProvaId === p.id ? 'hover:bg-teal-500' : 'hover:bg-gray-100 text-gray-400'}`}
                   title="Excluir"
                 >✕</button>
               </div>
@@ -484,7 +542,9 @@ export default function ProvasPage() {
 
           {/* Content */}
           {selectedProva && (
-            <>
+            <div ref={printRef}>
+              {/* Prova title */}
+              <h2 className="text-lg font-bold text-gray-800 mb-4">{selectedProva.nome}</h2>
               {/* Stats + Discipline table */}
               <div className="grid grid-cols-[220px_1fr] gap-5 mb-6">
                 {/* Stat cards */}
@@ -511,7 +571,7 @@ export default function ProvasPage() {
                     label={selectedProva.anula ? 'Resultado (c/ anulação)' : 'Resultado'}
                     value={resultado}
                     percent={pctOf(resultado, totalQ)}
-                    border="border-l-blue-500"
+                    border="border-l-teal-500"
                   />
                   {totalQ > 0 && (
                     <div className="px-4 pt-1 text-xs text-gray-400">
@@ -530,16 +590,29 @@ export default function ProvasPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          <th className="text-left px-4 py-2.5">Disciplina</th>
-                          <th className="text-center px-3 py-2.5">Qtd</th>
-                          <th className="text-center px-3 py-2.5">Acertos</th>
-                          <th className="text-center px-3 py-2.5">Erros</th>
-                          <th className="text-center px-3 py-2.5">Brancos</th>
-                          <th className="text-center px-3 py-2.5">Porcentagem</th>
+                          {[
+                            { col: 'nome',    label: 'Disciplina',  cls: 'text-left  px-4 py-2.5' },
+                            { col: 'qtd',     label: 'Qtd',         cls: 'text-center px-3 py-2.5' },
+                            { col: 'acertos', label: 'Acertos',     cls: 'text-center px-3 py-2.5' },
+                            { col: 'erros',   label: 'Erros',       cls: 'text-center px-3 py-2.5' },
+                            { col: 'brancos', label: 'Brancos',     cls: 'text-center px-3 py-2.5' },
+                            { col: 'pct',     label: 'Porcentagem', cls: 'text-center px-3 py-2.5' },
+                          ].map(({ col, label, cls }) => (
+                            <th
+                              key={col}
+                              className={`${cls} cursor-pointer select-none hover:text-gray-700 whitespace-nowrap`}
+                              onClick={() => handleSort(col)}
+                            >
+                              {label}
+                              <span className="ml-1 inline-block w-3 text-gray-400">
+                                {sortBy === col ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                              </span>
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {bySubject.map(s => (
+                        {sortedBySubject.map(s => (
                           <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-2 font-medium text-gray-800">{s.nome}</td>
                             <td className="px-3 py-2 text-center text-gray-600">{s.qtd}</td>
@@ -558,40 +631,32 @@ export default function ProvasPage() {
               </div>
 
               {/* Questões section */}
-              <div className="rounded-xl border border-gray-200 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="rounded-xl border border-gray-200">
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 rounded-t-xl">
                   <h2 className="text-sm font-semibold text-gray-700">
                     Questões <span className="text-gray-400 font-normal">({questoes.length})</span>
                   </h2>
                   <button
                     onClick={() => { setEditingQId(null); setAddingQ(true); setNewQForm({ ...EMPTY_QUESTAO }) }}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                    className="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors no-print"
                   >
                     + Adicionar
                   </button>
                 </div>
 
-                <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                  <colgroup>
-                    <col style={{ width: '40px' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '70px' }} />
-                    <col style={{ width: '60px' }} />
-                    <col style={{ width: '60px' }} />
-                    <col style={{ width: '70px' }} />
-                    <col style={{ width: '70px' }} />
-                    <col style={{ width: '64px' }} />
-                  </colgroup>
+                <div className="overflow-x-auto rounded-b-xl">
+                <table className="w-full text-sm min-w-[700px]">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      <th className="px-2 py-2 text-center">#</th>
-                      <th className="px-3 py-2 text-left">Disciplina</th>
-                      <th className="px-3 py-2 text-left">Questão</th>
-                      <th className="px-2 py-2 text-center">Marcada</th>
-                      <th className="px-2 py-2 text-center">Gabarito</th>
-                      <th className="px-2 py-2 text-center">Branco</th>
-                      <th className="px-2 py-2 text-center">Acertou</th>
-                      <th className="px-2 py-2"></th>
+                      <th className="px-2 py-2 text-center w-10 whitespace-nowrap">#</th>
+                      <th className="px-3 py-2 text-left w-48 whitespace-nowrap">Disciplina</th>
+                      <th className="px-3 py-2 text-left w-20 whitespace-nowrap">Questão</th>
+                      <th className="px-2 py-2 text-center w-16 whitespace-nowrap">Marcada</th>
+                      <th className="px-2 py-2 text-center w-16 whitespace-nowrap">Gabarito</th>
+                      {selectedProva?.anula && <th className="px-2 py-2 text-center w-16 whitespace-nowrap">Branco</th>}
+                      <th className="px-2 py-2 text-center w-16 whitespace-nowrap">Acertou</th>
+                      <th className="px-3 py-2 text-left w-32 whitespace-nowrap">Observações</th>
+                      <th className="px-2 py-2 w-14"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -605,6 +670,7 @@ export default function ProvasPage() {
                           subjects={subjects}
                           onSave={() => handleUpdateQ(q.id)}
                           onCancel={() => setEditingQId(null)}
+                          anula={selectedProva?.anula}
                         />
                       ) : (
                         <QuestaoViewRow
@@ -613,6 +679,7 @@ export default function ProvasPage() {
                           idx={idx + 1}
                           onEdit={startEditQ}
                           onDelete={handleDeleteQ}
+                          anula={selectedProva?.anula}
                         />
                       )
                     )}
@@ -625,20 +692,22 @@ export default function ProvasPage() {
                         subjects={subjects}
                         onSave={handleAddQ}
                         onCancel={() => setAddingQ(false)}
+                        anula={selectedProva?.anula}
                         isNew
                       />
                     )}
                     {questoes.length === 0 && !addingQ && (
                       <tr>
-                        <td colSpan={8} className="py-10 text-center text-gray-400 text-sm">
+                        <td colSpan={selectedProva?.anula ? 8 : 9} className="py-10 text-center text-gray-400 text-sm">
                           Nenhuma questão cadastrada. Clique em "+ Adicionar" para começar.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
-            </>
+            </div>
           )}
         </>
       )}

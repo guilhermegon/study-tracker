@@ -73,6 +73,7 @@ export const api = {
   getSummary: (weekId) => request(`/dashboard/summary?week_id=${weekId}`),
   getTotals: (weekIds) => request(`/dashboard/totals?week_ids=${weekIds.join(',')}`),
   getConsistency: (weekIds = []) => request(`/dashboard/consistency${weekIds.length ? '?week_ids=' + weekIds.join(',') : ''}`),
+  getStreak: () => request('/dashboard/streak'),
 
   // Update
   checkUpdate: () => request('/update/check'),

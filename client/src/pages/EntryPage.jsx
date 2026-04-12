@@ -66,7 +66,7 @@ export default function EntryPage() {
             onClick={() => setActiveDia(d)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
               ${activeDia === d
-                ? 'bg-white text-blue-700 shadow-sm'
+                ? 'bg-white text-teal-700 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'}`}
           >
             {d}
@@ -100,7 +100,7 @@ export default function EntryPage() {
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${e.estudado ? 'bg-green-500' : 'bg-gray-400'}`} />
                     <span className="font-medium text-gray-800 text-sm">{e.subject_name}</span>
                     {e.percentual_acerto != null && (
-                      <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">
+                      <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium">
                         {e.percentual_acerto}% acerto
                       </span>
                     )}

@@ -145,14 +145,14 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
                 <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
                   {/* Selecionadas */}
                   {selVisible.length > 0 && (
-                    <div className="px-3 py-2 bg-blue-50">
-                      <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
+                    <div className="px-3 py-2 bg-teal-50">
+                      <p className="text-xs font-semibold text-teal-500 uppercase tracking-wide mb-2">
                         Selecionadas ({subjects.length})
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {selVisible.map(s => (
                           <button key={s.id} type="button" onClick={() => toggle(s)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
                             ✓ {s.name}
                           </button>
                         ))}
@@ -169,7 +169,7 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
                       <div className="flex flex-wrap gap-1.5">
                         {avaVisible.map(s => (
                           <button key={s.id} type="button" onClick={() => toggle(s)}
-                            className="px-2.5 py-1 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                            className="px-2.5 py-1 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600 hover:border-teal-400 hover:text-teal-600 transition-colors">
                             {s.name}
                           </button>
                         ))}

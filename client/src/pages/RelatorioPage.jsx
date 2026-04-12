@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWeekContext } from '../store/weekContext'
 import { api } from '../api/client'
+import { useAppToast } from '../components/layout/AppShell'
+import { exportPdf } from '../utils/exportPdf'
 
 function StatCard({ label, value, sub, color = 'blue' }) {
   const colors = {
-    blue:   'text-blue-600   bg-blue-50',
+    blue:   'text-teal-600   bg-teal-50',
     green:  'text-green-600  bg-green-50',
     purple: 'text-purple-600 bg-purple-50',
     orange: 'text-orange-600 bg-orange-50',
@@ -21,11 +23,27 @@ function StatCard({ label, value, sub, color = 'blue' }) {
 
 export default function RelatorioPage() {
   const { weeks } = useWeekContext()
+  const toast = useAppToast()
+  const printRef = useRef(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selectedSubjects, setSelectedSubjects] = useState([])
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExportPdf() {
+    if (!printRef.current) return
+    setExporting(true)
+    try {
+      await exportPdf(printRef.current, 'relatorio.pdf')
+      toast('PDF exportado com sucesso!', 'success')
+    } catch {
+      toast('Erro ao exportar PDF', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function toggle(id) {
     setSelectedIds(prev =>
@@ -74,18 +92,28 @@ export default function RelatorioPage() {
 
   return (
     <div className="p-8 space-y-6">
+      <style>{`.printing .no-print { display: none !important; }`}</style>
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Relatório Consolidado</h1>
-        <p className="text-sm text-gray-500 mt-1">Selecione as semanas para totalizar os dados</p>
+      <div className="flex items-center justify-between no-print">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Relatório Consolidado</h1>
+          <p className="text-sm text-gray-500 mt-1">Selecione as semanas para totalizar os dados</p>
+        </div>
+        <button
+          onClick={handleExportPdf}
+          disabled={exporting || !data}
+          className="btn-secondary disabled:opacity-40"
+        >
+          {exporting ? 'Exportando...' : '⬇ Exportar PDF'}
+        </button>
       </div>
 
       {/* Seletor de semanas */}
-      <div className="card py-4">
+      <div className="card py-4 no-print">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Semanas</p>
           <div className="flex gap-3">
-            <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+            <button onClick={selectAll} className="text-xs text-teal-600 hover:text-teal-700 font-medium">
               Selecionar todas
             </button>
             <button onClick={clearAll} className="text-xs text-gray-400 hover:text-gray-600">
@@ -103,8 +131,8 @@ export default function RelatorioPage() {
                 onClick={() => toggle(w.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                   ${selectedIds.includes(w.id)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'}`}
               >
                 {w.name}
               </button>
@@ -120,7 +148,7 @@ export default function RelatorioPage() {
 
       {/* Filtro por disciplina */}
       {data && data.by_subject.length > 0 && (
-        <div className="card py-4">
+        <div className="card py-4 no-print">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Disciplina</p>
             {selectedSubjects.length > 0 && (
@@ -136,8 +164,8 @@ export default function RelatorioPage() {
                 onClick={() => toggleSubject(row.subject_name)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                   ${selectedSubjects.includes(row.subject_name)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'}`}
               >
                 {row.subject_name}
               </button>
@@ -162,7 +190,7 @@ export default function RelatorioPage() {
       ) : error ? (
         <div className="text-center py-10 text-red-500">{error}</div>
       ) : data && (
-        <>
+        <div ref={printRef} className="space-y-6">
           {/* Cards de resumo */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <StatCard
@@ -252,7 +280,7 @@ export default function RelatorioPage() {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )

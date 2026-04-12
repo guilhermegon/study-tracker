@@ -5,7 +5,7 @@ import { api } from '../api/client'
 
 function StatCard({ label, value, unit, color }) {
   const colors = {
-    blue: 'bg-blue-50 text-blue-600',
+    blue: 'bg-teal-50 text-teal-600',
     green: 'bg-green-50 text-green-600',
     purple: 'bg-purple-50 text-purple-600',
     orange: 'bg-orange-50 text-orange-600',
@@ -21,6 +21,7 @@ function StatCard({ label, value, unit, color }) {
 export default function HomePage() {
   const { selectedWeekId, selectedWeek, weeks } = useWeekContext()
   const [summary, setSummary] = useState(null)
+  const [streak, setStreak] = useState(null)
   const [updateInfo, setUpdateInfo] = useState(null)
   const [updateState, setUpdateState] = useState('idle') // 'idle' | 'loading' | 'done'
 
@@ -28,6 +29,10 @@ export default function HomePage() {
     if (!selectedWeekId) return
     api.getSummary(selectedWeekId).then(setSummary).catch(console.error)
   }, [selectedWeekId])
+
+  useEffect(() => {
+    api.getStreak().then(setStreak).catch(console.error)
+  }, [])
 
   useEffect(() => {
     api.checkUpdate().then(setUpdateInfo).catch(() => {})
@@ -46,7 +51,7 @@ export default function HomePage() {
   const updateBanner = (
     <>
       {updateInfo?.available && updateState !== 'done' && (
-        <div className="bg-blue-600 text-white px-6 py-3 flex items-center justify-between text-sm">
+        <div className="bg-teal-600 text-white px-6 py-3 flex items-center justify-between text-sm">
           <span>
             Nova versão disponível: <strong>{updateInfo.latest}</strong>
             {' '}(atual: v{updateInfo.current})
@@ -55,7 +60,7 @@ export default function HomePage() {
             <button
               onClick={handleUpdate}
               disabled={updateState === 'loading'}
-              className="bg-white text-blue-600 font-semibold px-4 py-1 rounded hover:bg-blue-50 disabled:opacity-60"
+              className="bg-white text-teal-600 font-semibold px-4 py-1 rounded hover:bg-teal-50 disabled:opacity-60"
             >
               {updateState === 'loading' ? 'Atualizando...' : 'Atualizar'}
             </button>
@@ -106,6 +111,51 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* Streak widget */}
+        {streak !== null && (
+          <div className={`mb-8 rounded-2xl px-6 py-5 flex items-center gap-6 ${
+            streak.streak > 0
+              ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200'
+              : 'bg-gray-50 border border-gray-200'
+          }`}>
+            {/* Flame */}
+            <div className={`text-5xl leading-none select-none ${streak.streak > 0 ? '' : 'grayscale opacity-40'}`}>
+              🔥
+            </div>
+
+            {/* Sequência atual */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-5xl font-extrabold tabular-nums leading-none ${streak.streak > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+                  {streak.streak}
+                </span>
+                <span className={`text-lg font-semibold ${streak.streak > 0 ? 'text-orange-400' : 'text-gray-400'}`}>
+                  {streak.streak === 1 ? 'dia seguido' : 'dias seguidos'}
+                </span>
+              </div>
+              <p className="text-sm mt-1 text-gray-500">
+                {streak.streak > 0
+                  ? 'Sequência atual de estudo — continue assim!'
+                  : 'Nenhuma sequência ativa. Estude hoje para começar!'}
+              </p>
+            </div>
+
+            {/* Divisor */}
+            <div className="w-px self-stretch bg-orange-100 shrink-0" />
+
+            {/* Recorde */}
+            <div className="text-center shrink-0">
+              <div className="flex items-baseline justify-center gap-1.5">
+                <span className="text-3xl font-extrabold tabular-nums text-amber-500">{streak.bestStreak}</span>
+                <span className="text-sm font-medium text-amber-400">{streak.bestStreak === 1 ? 'dia' : 'dias'}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 justify-center">
+                <span>🏆</span> Melhor sequência
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Summary cards */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -125,43 +175,49 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           <Link to="/semana" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📋</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Visão Semanal</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Visão Semanal</h3>
             <p className="text-sm text-gray-400 mt-1">Veja e edite os registros da semana</p>
           </Link>
 
           <Link to="/dashboard" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📊</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Dashboard</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Dashboard</h3>
             <p className="text-sm text-gray-400 mt-1">Gráficos e métricas de desempenho</p>
           </Link>
 
           <Link to="/relatorio" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📈</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Relatório</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Relatório</h3>
             <p className="text-sm text-gray-400 mt-1">Totais consolidados por semana</p>
           </Link>
 
           <Link to="/notas" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📝</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Notas</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Notas</h3>
             <p className="text-sm text-gray-400 mt-1">Suas anotações e lembretes</p>
           </Link>
 
           <Link to="/concursos" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">🏆</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Concursos</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Concursos</h3>
             <p className="text-sm text-gray-400 mt-1">Matérias e conteúdos por concurso</p>
           </Link>
 
           <Link to="/disciplinas" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📖</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Disciplinas</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Disciplinas</h3>
             <p className="text-sm text-gray-400 mt-1">Gerencie todas as disciplinas</p>
+          </Link>
+
+          <Link to="/disciplinas" className="card hover:shadow-md transition-shadow group cursor-pointer">
+            <div className="text-3xl mb-3">📝</div>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Provas</h3>
+            <p className="text-sm text-gray-400 mt-1">Gerencie todas as provas</p>
           </Link>
 
           <Link to="/backup" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">💾</div>
-            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">Backup</h3>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Backup</h3>
             <p className="text-sm text-gray-400 mt-1">Baixe ou restaure seus dados</p>
           </Link>
         </div>

@@ -31,9 +31,9 @@ export default function DuplicateWeekModal({ open, onClose, onSaved, week = null
     setSaving(true)
     try {
       const saved = await api.duplicateWeek(week.id, form)
-      ;['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].forEach(dia => {
-        const order = localStorage.getItem(`study-order-${week.id}-${dia}`)
-        if (order) localStorage.setItem(`study-order-${saved.id}-${dia}`, order)
+      const newOrder = await api.getWeekOrder(saved.id)
+      Object.entries(newOrder).forEach(([dia, ids]) => {
+        localStorage.setItem(`study-order-${saved.id}-${dia}`, JSON.stringify(ids))
       })
       onSaved(saved)
       onClose()

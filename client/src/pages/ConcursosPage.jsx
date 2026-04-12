@@ -234,8 +234,8 @@ export default function ConcursosPage() {
 
       {/* Formulário de concurso */}
       {showConcursoForm && (
-        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5">
-          <h3 className="text-sm font-semibold text-blue-700 mb-4">
+        <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 px-6 py-5">
+          <h3 className="text-sm font-semibold text-teal-700 mb-4">
             {editingConcursoId ? 'Editar Concurso' : 'Novo Concurso'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -301,10 +301,10 @@ export default function ConcursosPage() {
                 onDragOver={e => e.preventDefault()}
                 onClick={() => setSelectedId(c.id)}
                 className={`flex items-center gap-1 rounded-full border text-sm font-medium cursor-pointer select-none transition-colors
-                  ${dragOverIdx === idx ? 'ring-2 ring-blue-400 ring-offset-1' : ''}
+                  ${dragOverIdx === idx ? 'ring-2 ring-teal-400 ring-offset-1' : ''}
                   ${selectedId === c.id
-                    ? 'bg-blue-600 text-white border-blue-600 pl-3 pr-2 py-1.5'
-                    : 'bg-white text-gray-600 border-gray-300 px-3 py-1.5 hover:border-blue-400'}`}
+                    ? 'bg-teal-600 text-white border-teal-600 pl-3 pr-2 py-1.5'
+                    : 'bg-white text-gray-600 border-gray-300 px-3 py-1.5 hover:border-teal-400'}`}
               >
                 <span className={`text-xs mr-0.5 cursor-grab active:cursor-grabbing ${selectedId === c.id ? 'text-white/50' : 'text-gray-300'}`}>⠿</span>
                 <span>{c.nome}</span>
@@ -350,7 +350,7 @@ export default function ConcursosPage() {
                       href={selectedConcurso.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                      className="text-sm font-medium text-teal-600 hover:text-teal-700 hover:underline flex items-center gap-1"
                       title={selectedConcurso.link}
                     >
                       🔗 <span className="max-w-[200px] truncate">{selectedConcurso.link}</span>
@@ -378,14 +378,14 @@ export default function ConcursosPage() {
                     <div className="flex justify-end gap-2 mb-1">
                       <button
                         onClick={() => setCollapsed(new Set())}
-                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                        className="text-xs text-gray-500 hover:text-teal-600 transition-colors"
                       >
                         ↕ Expandir todos
                       </button>
                       <span className="text-gray-300">|</span>
                       <button
                         onClick={() => setCollapsed(new Set(materias.map(m => m.id)))}
-                        className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                        className="text-xs text-gray-500 hover:text-teal-600 transition-colors"
                       >
                         ↕ Recolher todos
                       </button>
@@ -413,7 +413,7 @@ export default function ConcursosPage() {
                             className="text-gray-300 hover:text-red-600 text-xs transition-colors" title="Desvincular disciplina">🗑</button>
                           <button
                             onClick={e => { e.stopPropagation(); setAddConteudoFor(materia.id); setNewConteudo({ nome: '', url: '' }); setCollapsed(prev => { const next = new Set(prev); next.delete(materia.id); return next }) }}
-                            className="text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                            className="text-xs px-3 py-1 bg-teal-50 text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors">
                             + Conteúdo
                           </button>
                         </div>
@@ -456,7 +456,7 @@ export default function ConcursosPage() {
                                         className="input py-0.5 text-sm" />
                                     ) : c.url ? (
                                       <a href={c.url} target="_blank" rel="noopener noreferrer"
-                                        className="text-blue-500 hover:text-blue-700 text-xs flex items-center gap-1 truncate max-w-xs">
+                                        className="text-teal-500 hover:text-teal-700 text-xs flex items-center gap-1 truncate max-w-xs">
                                         <span>🔗</span>
                                         <span className="truncate">{c.url}</span>
                                       </a>
@@ -477,7 +477,7 @@ export default function ConcursosPage() {
                                       <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                           onClick={() => setEditConteudo({ id: c.id, nome: c.nome, url: c.url || '', materia_id: materia.id })}
-                                          className="text-gray-400 hover:text-blue-600 text-xs transition-colors">✏️</button>
+                                          className="text-gray-400 hover:text-teal-600 text-xs transition-colors">✏️</button>
                                         <button onClick={() => handleDeleteConteudo(c.id)}
                                           className="text-gray-400 hover:text-red-600 text-xs transition-colors">🗑</button>
                                       </div>
@@ -488,7 +488,7 @@ export default function ConcursosPage() {
 
                               {/* Linha de adicionar conteúdo */}
                               {addConteudoFor === materia.id && (
-                                <tr className="bg-blue-50">
+                                <tr className="bg-teal-50">
                                   <td className="w-10 px-4 py-2.5" />
                                   <td className="px-3 py-2.5">
                                     <input autoFocus value={newConteudo.nome}
@@ -536,7 +536,7 @@ export default function ConcursosPage() {
                       (!subjectSearch || s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
                     )
                     return (
-                      <div className="bg-white rounded-xl border border-blue-200 overflow-hidden">
+                      <div className="bg-white rounded-xl border border-teal-200 overflow-hidden">
                         <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
                           <input
                             autoFocus
@@ -550,7 +550,7 @@ export default function ConcursosPage() {
                           {available.map(s => (
                             <button key={s.id} type="button"
                               onClick={() => handleAddSubject(s)}
-                              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-b border-gray-50 last:border-0 transition-colors">
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 border-b border-gray-50 last:border-0 transition-colors">
                               {s.name}
                             </button>
                           ))}
@@ -570,7 +570,7 @@ export default function ConcursosPage() {
                     )
                   })() : (
                     <button onClick={() => setShowSubjectPicker(true)}
-                      className="w-full py-3 text-sm text-blue-600 hover:text-blue-700 font-medium border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      className="w-full py-3 text-sm text-teal-600 hover:text-teal-700 font-medium border-2 border-dashed border-teal-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors">
                       + Vincular Disciplina
                     </button>
                   )}

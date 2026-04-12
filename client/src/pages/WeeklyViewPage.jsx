@@ -11,7 +11,7 @@ import { getSubjectColor } from '../utils/subjectColors'
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 const DIA_COLORS = {
-  Seg: { hex: '#3b82f6', text: 'text-blue-600',   dot: 'bg-blue-500'   },
+  Seg: { hex: '#0d9488', text: 'text-teal-600',   dot: 'bg-teal-500'   },
   Ter: { hex: '#10b981', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   Qua: { hex: '#8b5cf6', text: 'text-violet-600',  dot: 'bg-violet-500'  },
   Qui: { hex: '#f59e0b', text: 'text-amber-600',   dot: 'bg-amber-500'   },
@@ -274,9 +274,11 @@ export default function WeeklyViewPage() {
     const sourceEntries = getOrderedEntries(duplicateSource, grouped[duplicateSource] || [])
     setSaving(true)
     try {
+      const newCustomOrder = { ...customOrder }
       for (const target of duplicateTargets) {
+        const newIds = []
         for (const entry of sourceEntries) {
-          await api.createEntry(selectedWeekId, {
+          const created = await api.createEntry(selectedWeekId, {
             subject_id: entry.subject_id,
             dia: target,
             estudado: entry.estudado,
@@ -290,19 +292,16 @@ export default function WeeklyViewPage() {
             percentual_acerto: entry.percentual_acerto,
             dificuldade: entry.dificuldade,
           })
+          newIds.push(created.id)
+        }
+        if (newIds.length > 0) {
+          const newOrderJson = JSON.stringify(newIds)
+          localStorage.setItem(`study-order-${selectedWeekId}-${target}`, newOrderJson)
+          newCustomOrder[target] = newIds
+          api.saveWeekDayOrder(selectedWeekId, target, newIds).catch(console.error)
         }
       }
-      const sourceOrder = localStorage.getItem(`study-order-${selectedWeekId}-${duplicateSource}`)
-      if (sourceOrder) {
-        const parsedOrder = JSON.parse(sourceOrder)
-        const newCustomOrder = { ...customOrder }
-        for (const target of duplicateTargets) {
-          localStorage.setItem(`study-order-${selectedWeekId}-${target}`, sourceOrder)
-          newCustomOrder[target] = parsedOrder
-          api.saveWeekDayOrder(selectedWeekId, target, parsedOrder).catch(console.error)
-        }
-        setCustomOrder(newCustomOrder)
-      }
+      setCustomOrder(newCustomOrder)
       const label = duplicateTargets.join(', ')
       toast(`${duplicateSource} duplicado para: ${label}`, 'success')
       setDuplicateSource(null)
@@ -377,7 +376,7 @@ export default function WeeklyViewPage() {
   const totalAcertos = entries.reduce((s, e) => s + (e.num_acertos || 0), 0)
 
   // Estilo base para inputs inline
-  const ci = 'w-full bg-white border border-blue-200 rounded px-1.5 py-0.5 text-sm focus:outline-none focus:border-blue-400'
+  const ci = 'w-full bg-white border border-teal-200 rounded px-1.5 py-0.5 text-sm focus:outline-none focus:border-teal-400'
 
   return (
     <div className="p-8" ref={printRef}>
@@ -407,8 +406,8 @@ export default function WeeklyViewPage() {
               onClick={() => { setShowAddForm(v => !v); setEditEntry(null); setAddFormDia(null) }}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors
                 ${showAddForm
-                  ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
-                  : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+                  ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700'
+                  : 'bg-white text-teal-600 border-teal-300 hover:bg-teal-50'}`}
             >
               {showAddForm ? '✕ Cancelar' : '+ Novo registro'}
             </button>
@@ -422,7 +421,7 @@ export default function WeeklyViewPage() {
           </div>
           <div className="flex gap-6 text-center">
             <div>
-              <p className="text-2xl font-bold text-blue-600">{entries.length}</p>
+              <p className="text-2xl font-bold text-teal-600">{entries.length}</p>
               <p className="text-xs text-gray-400">registros</p>
             </div>
             <div>
@@ -443,8 +442,8 @@ export default function WeeklyViewPage() {
 
       {/* Formulário de novo registro */}
       {showAddForm && (
-        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5 no-print">
-          <h2 className="text-sm font-semibold text-blue-700 mb-4">Novo registro</h2>
+        <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 px-6 py-5 no-print">
+          <h2 className="text-sm font-semibold text-teal-700 mb-4">Novo registro</h2>
           <EntryForm
             weekId={selectedWeekId}
             weekSubjects={weekSubjects}
@@ -484,7 +483,7 @@ export default function WeeklyViewPage() {
                       {DIAS.filter(d => d !== dia).map(d => (
                         <button key={d}
                           onClick={() => toggleDuplicateTarget(d)}
-                          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${duplicateTargets.includes(d) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}>
+                          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${duplicateTargets.includes(d) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'}`}>
                           {d}
                         </button>
                       ))}
@@ -501,19 +500,19 @@ export default function WeeklyViewPage() {
                   ) : (
                     <div className="no-print flex items-center gap-3">
                       <button onClick={() => openDuplicate(dia)}
-                        className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                        className="text-xs text-gray-400 hover:text-teal-600 transition-colors"
                         title={`Duplicar ${dia} para outro dia`}>
                         ⧉ Duplicar
                       </button>
                       <button onClick={() => openAddForDia(dia)}
-                        className={`text-xs font-medium transition-colors ${addFormDia === dia ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-blue-600'}`}
+                        className={`text-xs font-medium transition-colors ${addFormDia === dia ? 'text-teal-600 hover:text-teal-800' : 'text-gray-400 hover:text-teal-600'}`}
                         title={`Novo registro para ${dia}`}>
                         + Novo
                       </button>
                     </div>
                   )}
                 </div>
-                <div className={`overflow-x-auto rounded-xl border transition-colors ${dragOverDia === dia && dragSourceDia && dragSourceDia !== dia ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-300'}`}>
+                <div className={`overflow-x-auto rounded-xl border transition-colors ${dragOverDia === dia && dragSourceDia && dragSourceDia !== dia ? 'border-teal-400 ring-2 ring-teal-200' : 'border-gray-300'}`}>
                   <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                     <colgroup>
                       <col className="no-print" style={{ width: '32px' }} />
@@ -556,10 +555,10 @@ export default function WeeklyViewPage() {
                             onDragEnd={() => handleDragEnd(dia, ordered)}
                             onDragOver={ev => ev.preventDefault()}
                             onKeyDown={isEditing ? handleKeyDown : undefined}
-                            className={`group transition-colors ${!e.estudado && !isEditing ? 'opacity-50' : ''} ${isDragTarget ? 'border-t-2 border-blue-300' : ''} hover:brightness-95`}
+                            className={`group transition-colors ${isDragTarget ? 'border-t-2 border-teal-300' : ''} hover:brightness-95`}
                             style={{
-                              backgroundColor: isDragTarget ? '#eff6ff' : isEditing ? '#eff6ff' : subjectColor.rowBg,
-                              boxShadow: `inset 4px 0 0 ${subjectColor.hex}`,
+                              backgroundColor: isDragTarget ? '#eff6ff' : isEditing ? '#eff6ff' : (e.estudado ? subjectColor.rowBg : '#f3f4f6'),
+                              boxShadow: `inset 4px 0 0 ${e.estudado ? subjectColor.hex : '#d1d5db'}`,
                             }}
                           >
                             {/* Drag handle */}
@@ -572,7 +571,7 @@ export default function WeeklyViewPage() {
                               {isEditing
                                 ? <input type="checkbox" checked={editForm.estudado}
                                     onChange={ev => setField('estudado', ev.target.checked)}
-                                    className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+                                    className="w-4 h-4 rounded accent-teal-600 cursor-pointer" />
                                 : <span className={`w-2 h-2 rounded-full inline-block ${e.estudado ? 'bg-green-500' : 'bg-gray-300'}`} />
                               }
                             </td>
@@ -585,7 +584,7 @@ export default function WeeklyViewPage() {
                                     className={ci}>
                                     {weekSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                   </select>
-                                : <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${subjectColor.badge}`}>
+                                : <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${e.estudado ? subjectColor.badge : 'bg-gray-200 text-gray-400'}`}>
                                     {e.subject_name}
                                   </span>
                               }
@@ -690,7 +689,7 @@ export default function WeeklyViewPage() {
                                   </div>
                                 : <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => startEdit(e)}
-                                      className="text-gray-400 hover:text-blue-600 text-xs transition-colors">✏️</button>
+                                      className="text-gray-400 hover:text-teal-600 text-xs transition-colors">✏️</button>
                                     <button onClick={() => handleDelete(e.id)}
                                       className="text-gray-400 hover:text-red-600 text-xs transition-colors">✕</button>
                                   </div>
@@ -703,8 +702,8 @@ export default function WeeklyViewPage() {
                   </table>
                 </div>
                 {addFormDia === dia && (
-                  <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5 no-print">
-                    <h2 className="text-sm font-semibold text-blue-700 mb-4">Novo registro — {dia}</h2>
+                  <div className="mt-2 rounded-xl border border-teal-200 bg-teal-50 px-6 py-5 no-print">
+                    <h2 className="text-sm font-semibold text-teal-700 mb-4">Novo registro — {dia}</h2>
                     <EntryForm
                       weekId={selectedWeekId}
                       weekSubjects={weekSubjects}

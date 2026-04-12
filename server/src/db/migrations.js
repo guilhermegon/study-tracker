@@ -101,6 +101,11 @@ export function runMigrations() {
     db.exec('ALTER TABLE concursos ADD COLUMN link TEXT')
   } catch {}
 
+  // Adiciona observacoes em questoes caso não exista (migração incremental)
+  try {
+    db.exec("ALTER TABLE questoes ADD COLUMN observacoes TEXT NOT NULL DEFAULT ''")
+  } catch {}
+
   // Tabelas de Provas / Questões
   db.exec(`
     CREATE TABLE IF NOT EXISTS provas (

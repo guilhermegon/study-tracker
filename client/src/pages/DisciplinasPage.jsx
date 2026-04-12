@@ -11,7 +11,7 @@ function ColorPicker({ value, onChange, size = 'md' }) {
       <button
         type="button"
         onClick={() => onChange(null)}
-        className={`${sz} rounded-full border-2 transition-transform hover:scale-110 bg-gradient-to-br from-blue-400 via-violet-400 to-rose-400 ${value === null ? 'border-gray-700 scale-110' : 'border-transparent'}`}
+        className={`${sz} rounded-full border-2 transition-transform hover:scale-110 bg-gradient-to-br from-teal-400 via-violet-400 to-rose-400 ${value === null ? 'border-gray-700 scale-110' : 'border-transparent'}`}
         title="Automático"
       />
       {SUBJECT_PALETTE.map(p => (
@@ -184,13 +184,13 @@ export default function DisciplinasPage() {
                 <>
                   {s.color
                     ? <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                    : <span className="w-3 h-3 rounded-full flex-shrink-0 bg-gradient-to-br from-blue-400 via-violet-400 to-rose-400" title="Cor automática" />
+                    : <span className="w-3 h-3 rounded-full flex-shrink-0 bg-gradient-to-br from-teal-400 via-violet-400 to-rose-400" title="Cor automática" />
                   }
                   <span className="flex-1 text-sm font-medium text-gray-800">{s.name}</span>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(s)}
-                      className="text-gray-400 hover:text-blue-600 text-xs px-2 py-1 rounded transition-colors"
+                      className="text-gray-400 hover:text-teal-600 text-xs px-2 py-1 rounded transition-colors"
                       title="Renomear"
                     >
                       ✏️

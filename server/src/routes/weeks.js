@@ -114,20 +114,33 @@ router.post('/:id/duplicate', (req, res) => {
       SELECT ?, subject_id, total_aulas FROM week_subjects WHERE week_id = ?
     `).run(newWeekId, req.params.id)
 
-    db.prepare(`
+    const originalEntries = db.prepare('SELECT * FROM entries WHERE week_id = ?').all(req.params.id)
+    const insertEntry = db.prepare(`
       INSERT INTO entries (week_id, subject_id, dia, estudado, total_aulas, aula_estudada,
         num_pags_inicio, num_pags_fim, qtd_pags_estudadas,
         num_exercicios, num_acertos, percentual_acerto, dificuldade)
-      SELECT ?, subject_id, dia, estudado, total_aulas, aula_estudada,
-        num_pags_inicio, num_pags_fim, qtd_pags_estudadas,
-        num_exercicios, num_acertos, percentual_acerto, dificuldade
-      FROM entries WHERE week_id = ?
-    `).run(newWeekId, req.params.id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    const idMap = {}
+    for (const e of originalEntries) {
+      const { lastInsertRowid } = insertEntry.run(
+        newWeekId, e.subject_id, e.dia, e.estudado, e.total_aulas, e.aula_estudada,
+        e.num_pags_inicio, e.num_pags_fim, e.qtd_pags_estudadas,
+        e.num_exercicios, e.num_acertos, e.percentual_acerto, e.dificuldade
+      )
+      idMap[e.id] = Number(lastInsertRowid)
+    }
 
-    db.prepare(`
-      INSERT INTO week_day_orders (week_id, dia, subject_ids)
-      SELECT ?, dia, subject_ids FROM week_day_orders WHERE week_id = ?
-    `).run(newWeekId, req.params.id)
+    const originalOrders = db.prepare(
+      'SELECT dia, subject_ids FROM week_day_orders WHERE week_id = ?'
+    ).all(req.params.id)
+    const insertOrder = db.prepare(
+      'INSERT INTO week_day_orders (week_id, dia, subject_ids) VALUES (?, ?, ?)'
+    )
+    for (const { dia, subject_ids } of originalOrders) {
+      const newIds = JSON.parse(subject_ids).map(id => idMap[id]).filter(Boolean)
+      if (newIds.length > 0) insertOrder.run(newWeekId, dia, JSON.stringify(newIds))
+    }
 
     result = db.prepare('SELECT * FROM weeks WHERE id = ?').get(newWeekId)
     db.exec('COMMIT')

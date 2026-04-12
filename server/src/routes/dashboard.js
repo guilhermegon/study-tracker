@@ -197,6 +197,49 @@ router.get('/totals', (req, res) => {
   res.json({ summary, by_subject })
 })
 
+// GET /api/dashboard/streak  — sequência atual e recorde histórico
+router.get('/streak', (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      date(w.date_start, '+' || CASE e.dia
+        WHEN 'Seg' THEN 0 WHEN 'Ter' THEN 1 WHEN 'Qua' THEN 2
+        WHEN 'Qui' THEN 3 WHEN 'Sex' THEN 4 WHEN 'Sáb' THEN 5
+        WHEN 'Dom' THEN 6 END || ' days') AS study_date,
+      MAX(e.estudado) AS studied
+    FROM entries e
+    JOIN weeks w ON w.id = e.week_id
+    GROUP BY study_date
+    ORDER BY study_date ASC
+  `).all()
+
+  const today = new Date().toISOString().split('T')[0]
+
+  // Melhor sequência histórica (percorre ASC)
+  let bestStreak = 0
+  let running = 0
+  for (const row of rows) {
+    if (row.study_date > today) continue
+    if (row.study_date === today && !row.studied) continue
+    if (row.studied) {
+      running++
+      if (running > bestStreak) bestStreak = running
+    } else {
+      running = 0
+    }
+  }
+
+  // Sequência atual (percorre DESC)
+  let streak = 0
+  for (const row of [...rows].reverse()) {
+    if (row.study_date > today) continue
+    if (row.study_date === today && !row.studied) continue
+    if (!row.studied) break
+    streak++
+  }
+
+  res.json({ streak, bestStreak })
+})
+
 // GET /api/dashboard/consistency?week_ids=1,2,3  (global quando sem filtro)
 router.get('/consistency', (req, res) => {
   const { week_ids } = req.query
