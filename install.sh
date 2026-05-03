@@ -78,7 +78,7 @@ if [[ "$OS" == "Darwin" ]]; then
     cat > "$SHORTCUT" << CMDEOF
 #!/usr/bin/env bash
 cd "$SCRIPT_DIR"
-./start.sh
+bash start.sh
 CMDEOF
     chmod +x "$SHORTCUT"
     xattr -d com.apple.quarantine "$SHORTCUT" 2>/dev/null || true

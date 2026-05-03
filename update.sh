@@ -103,6 +103,18 @@ npm run build --prefix client > /dev/null 2>&1
 chmod +x start.sh update.sh restore.sh install.sh 2>/dev/null || true
 xattr -d com.apple.quarantine start.sh update.sh restore.sh install.sh 2>/dev/null || true
 
+# Atualizar atalho do macOS para usar bash (não depende do bit de execução)
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  for SHORTCUT in "$HOME/Desktop/Study Tracker.command" "$HOME/Applications/Study Tracker.command" "/Applications/Study Tracker.command"; do
+    if [ -f "$SHORTCUT" ]; then
+      INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
+      printf '#!/usr/bin/env bash\ncd "%s"\nbash start.sh\n' "$INSTALL_DIR" > "$SHORTCUT"
+      chmod +x "$SHORTCUT"
+      xattr -d com.apple.quarantine "$SHORTCUT" 2>/dev/null || true
+    fi
+  done
+fi
+
 # Reiniciar servidor
 echo ""
 echo "Reiniciando servidor..."
