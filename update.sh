@@ -70,6 +70,11 @@ else
   done
 fi
 
+# Corrigir permissões dos scripts (zip do Windows não preserva bits de execução)
+chmod +x start.sh update.sh restore.sh install.sh 2>/dev/null || true
+# Remover atributo de quarentena do macOS para evitar bloqueio do Gatekeeper
+xattr -d com.apple.quarantine start.sh update.sh restore.sh install.sh 2>/dev/null || true
+
 # Restaurar banco de dados
 echo "Restaurando banco de dados..."
 if [ -f "$BACKUP_FILE" ]; then
@@ -95,7 +100,8 @@ echo "Compilando interface..."
 npm run build --prefix client > /dev/null 2>&1
 
 # Corrigir permissões dos scripts
-chmod +x start.sh update.sh restore.sh 2>/dev/null || true
+chmod +x start.sh update.sh restore.sh install.sh 2>/dev/null || true
+xattr -d com.apple.quarantine start.sh update.sh restore.sh install.sh 2>/dev/null || true
 
 # Reiniciar servidor
 echo ""
