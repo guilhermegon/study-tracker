@@ -20,7 +20,7 @@ const NAV = [
 ]
 
 export default function Sidebar({ collapsed = false, onToggle }) {
-  const { weeks, selectedWeekId, setSelectedWeekId, selectedWeek, loadWeeks } = useWeekContext()
+  const { weeks, selectedWeekId, setSelectedWeekId, selectedWeek, loadWeeks, bumpSubjectsKey } = useWeekContext()
   const [modal, setModal] = useState(false)
   const [editWeek, setEditWeek] = useState(null)
   const [duplicateModal, setDuplicateModal] = useState(false)
@@ -28,6 +28,7 @@ export default function Sidebar({ collapsed = false, onToggle }) {
   function handleSaved(week) {
     loadWeeks()
     setSelectedWeekId(week.id)
+    bumpSubjectsKey()
   }
 
   async function handleDelete() {

@@ -152,7 +152,7 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete, anula }) {
   return (
     <tr className="group hover:bg-gray-50 transition-colors">
       <td className="px-2 py-1.5 text-center text-xs text-gray-400 w-8">{idx}</td>
-      <td className="px-3 py-1.5 text-sm text-gray-700 max-w-[140px] truncate">{q.subject_name || <span className="text-gray-300">—</span>}</td>
+      <td className="px-3 py-1.5 text-sm text-gray-700 break-words">{q.subject_name || <span className="text-gray-300">—</span>}</td>
       <td className="px-3 py-1.5 text-sm text-gray-700">{q.nome || <span className="text-gray-300">—</span>}</td>
       <td className="px-2 py-1.5 text-center w-16">
         <span className="font-mono text-sm font-bold text-gray-800">{q.marcada || <span className="text-gray-300">—</span>}</span>
@@ -175,7 +175,7 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete, anula }) {
             : <span className="text-red-500 font-bold text-base">✗</span>
         )}
       </td>
-      <td className="px-3 py-1.5 text-xs text-gray-500 max-w-0 truncate" title={q.observacoes || ''}>
+      <td className="px-3 py-1.5 text-xs text-gray-500 break-words">
         {q.observacoes || <span className="text-gray-200">—</span>}
       </td>
       <td className="px-2 py-1.5 text-right w-16 no-print">

@@ -10,6 +10,9 @@ export function WeekProvider({ children }) {
   })
   const [weeks, setWeeks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [subjectsKey, setSubjectsKey] = useState(0)
+
+  const bumpSubjectsKey = () => setSubjectsKey(k => k + 1)
 
   const loadWeeks = async () => {
     try {
@@ -40,7 +43,7 @@ export function WeekProvider({ children }) {
   const selectedWeek = weeks.find(w => w.id === selectedWeekId) ?? null
 
   return (
-    <WeekContext.Provider value={{ selectedWeekId, selectedWeek, setSelectedWeekId, weeks, loadWeeks, loading }}>
+    <WeekContext.Provider value={{ selectedWeekId, selectedWeek, setSelectedWeekId, weeks, loadWeeks, loading, subjectsKey, bumpSubjectsKey }}>
       {children}
     </WeekContext.Provider>
   )

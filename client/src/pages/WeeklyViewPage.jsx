@@ -35,7 +35,7 @@ const toForm = (e) => ({
 })
 
 export default function WeeklyViewPage() {
-  const { selectedWeekId, selectedWeek } = useWeekContext()
+  const { selectedWeekId, selectedWeek, subjectsKey } = useWeekContext()
   const toast = useAppToast()
   const { entries, loading, reload } = useEntries(selectedWeekId)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -85,7 +85,7 @@ export default function WeeklyViewPage() {
   useEffect(() => {
     if (!selectedWeekId) return
     api.getWeekSubjects(selectedWeekId).then(setWeekSubjects).catch(console.error)
-  }, [selectedWeekId])
+  }, [selectedWeekId, subjectsKey])
 
   function getOrderedEntries(dia, list) {
     const order = customOrder[dia]
