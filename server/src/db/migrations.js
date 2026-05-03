@@ -106,6 +106,12 @@ export function runMigrations() {
     db.exec("ALTER TABLE questoes ADD COLUMN observacoes TEXT NOT NULL DEFAULT ''")
   } catch {}
 
+  // Adiciona colunas de resultado em provas caso não existam (migração incremental)
+  try { db.exec('ALTER TABLE provas ADD COLUMN inscritos INTEGER') } catch {}
+  try { db.exec('ALTER TABLE provas ADD COLUMN colocacao INTEGER') } catch {}
+  try { db.exec('ALTER TABLE provas ADD COLUMN vagas_ac INTEGER') } catch {}
+  try { db.exec('ALTER TABLE provas ADD COLUMN vagas_cr INTEGER') } catch {}
+
   // Tabelas de Provas / Questões
   db.exec(`
     CREATE TABLE IF NOT EXISTS provas (

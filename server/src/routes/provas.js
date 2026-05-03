@@ -28,12 +28,12 @@ router.get('/', (req, res) => {
 
 // POST /api/provas
 router.post('/', (req, res) => {
-  const { nome, tipo = 'prova', anula = false, concurso_ids = [] } = req.body
+  const { nome, tipo = 'prova', anula = false, concurso_ids = [], inscritos = null, colocacao = null, vagas_ac = null, vagas_cr = null } = req.body
   if (!nome?.trim()) return res.status(400).json({ error: 'nome é obrigatório' })
 
   const { lastInsertRowid } = db.prepare(
-    'INSERT INTO provas (nome, tipo, anula) VALUES (?, ?, ?)'
-  ).run(nome.trim(), tipo, anula ? 1 : 0)
+    'INSERT INTO provas (nome, tipo, anula, inscritos, colocacao, vagas_ac, vagas_cr) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(nome.trim(), tipo, anula ? 1 : 0, inscritos || null, colocacao || null, vagas_ac || null, vagas_cr || null)
 
   const ins = db.prepare('INSERT OR IGNORE INTO prova_concursos (prova_id, concurso_id) VALUES (?, ?)')
   for (const cid of concurso_ids) ins.run(lastInsertRowid, cid)
@@ -43,14 +43,18 @@ router.post('/', (req, res) => {
 
 // PUT /api/provas/:id
 router.put('/:id', (req, res) => {
-  const { nome, tipo, anula, concurso_ids } = req.body
+  const { nome, tipo, anula, concurso_ids, inscritos, colocacao, vagas_ac, vagas_cr } = req.body
   const prova = db.prepare('SELECT * FROM provas WHERE id = ?').get(req.params.id)
   if (!prova) return res.status(404).json({ error: 'Prova não encontrada' })
 
-  db.prepare('UPDATE provas SET nome = ?, tipo = ?, anula = ? WHERE id = ?').run(
+  db.prepare('UPDATE provas SET nome = ?, tipo = ?, anula = ?, inscritos = ?, colocacao = ?, vagas_ac = ?, vagas_cr = ? WHERE id = ?').run(
     nome?.trim() ?? prova.nome,
     tipo ?? prova.tipo,
     anula !== undefined ? (anula ? 1 : 0) : prova.anula,
+    inscritos !== undefined ? (inscritos || null) : prova.inscritos,
+    colocacao !== undefined ? (colocacao || null) : prova.colocacao,
+    vagas_ac !== undefined ? (vagas_ac || null) : prova.vagas_ac,
+    vagas_cr !== undefined ? (vagas_cr || null) : prova.vagas_cr,
     req.params.id
   )
 
@@ -104,7 +108,7 @@ router.post('/:id/questoes', (req, res) => {
     nome,
     String(marcada).slice(0, 1).toUpperCase(),
     String(gabarito).slice(0, 1).toUpperCase(),
-    branco ? 0 : (acertou ? 1 : 0),
+    acertou ? 1 : 0,
     branco ? 1 : 0,
     observacoes || ''
   )
@@ -134,7 +138,7 @@ router.put('/:provaId/questoes/:questaoId', (req, res) => {
   } = req.body
 
   const blancoVal = branco ? 1 : 0
-  const acertouVal = blancoVal ? 0 : (acertou ? 1 : 0)
+  const acertouVal = acertou ? 1 : 0
 
   db.prepare(
     'UPDATE questoes SET subject_id=?, nome=?, marcada=?, gabarito=?, acertou=?, branco=?, observacoes=? WHERE id=?'

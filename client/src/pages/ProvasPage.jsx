@@ -4,12 +4,15 @@ import { useAppToast } from '../components/layout/AppShell'
 import Modal from '../components/shared/Modal'
 import { exportPdf } from '../utils/exportPdf'
 
-const EMPTY_PROVA = { nome: '', tipo: 'prova', anula: false, concurso_ids: [] }
+const EMPTY_PROVA = { nome: '', tipo: 'prova', anula: false, concurso_ids: [], inscritos: '', colocacao: '', vagas_ac: '', vagas_cr: '' }
 const EMPTY_QUESTAO = { subject_id: '', nome: '', marcada: '', gabarito: '', acertou: false, branco: false, observacoes: '' }
 
 function pctOf(n, total) {
-  if (!total || total === 0) return '0%'
-  return Math.round((n / total) * 100) + '%'
+  if (!total || total === 0) return '0,00%'
+  const val = (n / total) * 100
+  const integer = Math.floor(val)
+  const decimal = Math.floor((val - integer) * 100)
+  return `${integer},${decimal.toString().padStart(2, '0')}%`
 }
 function pctDecimal(n, total) {
   if (!total || total === 0) return '0,00%'
@@ -37,7 +40,16 @@ function ProvaModal({ open, onClose, editing, concursos, onSaved }) {
   useEffect(() => {
     if (open) {
       setForm(editing
-        ? { nome: editing.nome, tipo: editing.tipo, anula: editing.anula, concurso_ids: [...editing.concurso_ids] }
+        ? {
+            nome: editing.nome,
+            tipo: editing.tipo,
+            anula: editing.anula,
+            concurso_ids: [...editing.concurso_ids],
+            inscritos: editing.inscritos ?? '',
+            colocacao: editing.colocacao ?? '',
+            vagas_ac: editing.vagas_ac ?? '',
+            vagas_cr: editing.vagas_cr ?? '',
+          }
         : { ...EMPTY_PROVA }
       )
     }
@@ -105,6 +117,53 @@ function ProvaModal({ open, onClose, editing, concursos, onSaved }) {
           <span className="text-sm text-gray-700">Uma questão errada anula uma questão certa</span>
         </label>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Inscritos</label>
+            <input
+              type="number"
+              min="0"
+              className="input w-full"
+              placeholder="ex: 5000"
+              value={form.inscritos}
+              onChange={e => setForm(p => ({ ...p, inscritos: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Minha colocação</label>
+            <input
+              type="number"
+              min="1"
+              className="input w-full"
+              placeholder="ex: 42"
+              value={form.colocacao}
+              onChange={e => setForm(p => ({ ...p, colocacao: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vagas ampla concorrência</label>
+            <input
+              type="number"
+              min="0"
+              className="input w-full"
+              placeholder="ex: 10"
+              value={form.vagas_ac}
+              onChange={e => setForm(p => ({ ...p, vagas_ac: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vagas cadastro de reserva</label>
+            <input
+              type="number"
+              min="0"
+              className="input w-full"
+              placeholder="ex: 5"
+              value={form.vagas_cr}
+              onChange={e => setForm(p => ({ ...p, vagas_cr: e.target.value }))}
+            />
+          </div>
+        </div>
+
         {concursos.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Concursos</label>
@@ -169,11 +228,10 @@ function QuestaoViewRow({ q, idx, onEdit, onDelete, anula }) {
         </td>
       )}
       <td className="px-2 py-1.5 text-center w-16">
-        {!q.branco && (
-          q.acertou
-            ? <span className="text-green-600 font-bold text-base">✓</span>
-            : <span className="text-red-500 font-bold text-base">✗</span>
-        )}
+        {q.acertou
+          ? <span className="text-green-600 font-bold text-base">✓</span>
+          : <span className="text-red-500 font-bold text-base">✗</span>
+        }
       </td>
       <td className="px-3 py-1.5 text-xs text-gray-500 break-words">
         {q.observacoes || <span className="text-gray-200">—</span>}
@@ -200,7 +258,6 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
   function set(field, value) {
     onChange(prev => {
       const next = { ...prev, [field]: value }
-      if (field === 'branco' && value) next.acertou = false
       // auto-acerto quando marcada === gabarito (ambos preenchidos, não branco)
       const m = field === 'marcada' ? value : next.marcada
       const g = field === 'gabarito' ? value : next.gabarito
@@ -276,7 +333,7 @@ function QuestaoEditRow({ form, onChange, subjects, onSave, onCancel, isNew, idx
           type="checkbox"
           className="w-4 h-4 accent-green-600"
           checked={form.acertou}
-          disabled={anula && form.branco}
+          disabled={false}
           onChange={e => set('acertou', e.target.checked)}
           onKeyDown={handleKeyDown}
           title="Acertou"
@@ -331,7 +388,10 @@ export default function ProvasPage() {
     Promise.all([api.getProvas(), api.getConcursos(), api.getSubjects()])
       .then(([p, c, s]) => {
         setProvas(p); setConcursos(c); setSubjects(s)
-        if (p.length > 0) setSelectedProvaId(p[0].id)
+        if (p.length > 0) {
+          const sorted = [...p].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+          setSelectedProvaId(sorted[0].id)
+        }
       })
       .catch(() => toast('Erro ao carregar dados', 'error'))
       .finally(() => setLoading(false))
@@ -354,6 +414,9 @@ export default function ProvasPage() {
   const resultado  = selectedProva?.anula
     ? Math.max(0, acertosArr.length - errosArr.length)
     : acertosArr.length
+  const colocacao = selectedProva?.colocacao ?? null
+  const inscritos = selectedProva?.inscritos ?? null
+  const pct = colocacao && inscritos ? pctOf(colocacao, inscritos) : ''
 
   const bySubject = subjects
     .map(s => {
@@ -411,7 +474,10 @@ export default function ProvasPage() {
       await api.deleteProva(id)
       const remaining = provas.filter(x => x.id !== id)
       setProvas(remaining)
-      if (selectedProvaId === id) setSelectedProvaId(remaining[0]?.id ?? null)
+      if (selectedProvaId === id) {
+        const sorted = [...remaining].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+        setSelectedProvaId(sorted[0]?.id ?? null)
+      }
       toast('Prova excluída', 'success')
     } catch (err) {
       toast(err.message || 'Erro ao excluir', 'error')
@@ -573,6 +639,15 @@ export default function ProvasPage() {
                     percent={pctOf(resultado, totalQ)}
                     border="border-l-teal-500"
                   />
+                  {colocacao && (
+                    <StatCard
+                      label="Minha Colocação"
+                      value={`${colocacao}º`}
+                      percent={pct}
+                      border="border-l-teal-500"
+                    />
+                  )}
+
                   {totalQ > 0 && (
                     <div className="px-4 pt-1 text-xs text-gray-400">
                       Total: {totalQ} questões
@@ -628,8 +703,7 @@ export default function ProvasPage() {
                     </table>
                   )}
                 </div>
-              </div>
-
+              </div>          
               {/* Questões section */}
               <div className="rounded-xl border border-gray-200">
                 <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 rounded-t-xl">
