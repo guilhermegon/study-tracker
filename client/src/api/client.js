@@ -75,6 +75,22 @@ export const api = {
   getConsistency: (weekIds = []) => request(`/dashboard/consistency${weekIds.length ? '?week_ids=' + weekIds.join(',') : ''}`),
   getStreak: () => request('/dashboard/streak'),
 
+  // Gamification
+  getGamificationProfile: (weekId, mock = false) => {
+    const params = new URLSearchParams()
+    if (weekId) params.set('week_id', weekId)
+    if (mock) params.set('mock', '1')
+    const qs = params.toString()
+    return request(`/gamification/profile${qs ? '?' + qs : ''}`)
+  },
+  getGamificationSubjects: () => request('/gamification/subjects'),
+  getGamificationAchievements: (weekId) => {
+    const qs = weekId ? `?week_id=${weekId}` : ''
+    return request(`/gamification/achievements${qs}`)
+  },
+  setStreakProtection: (enabled) =>
+    request('/gamification/streak-protection', { method: 'POST', body: { enabled } }),
+
   // Update
   checkUpdate: () => request('/update/check'),
   applyUpdate: (version) => request('/update/apply', { method: 'POST', body: { version } }),

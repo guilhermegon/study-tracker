@@ -16,6 +16,7 @@ const NAV = [
   { to: '/concursos', label: 'Concursos', icon: '🏆' },
   { to: '/disciplinas', label: 'Disciplinas', icon: '📖' },
   { to: '/provas', label: 'Provas', icon: '📝' },
+  { to: '/conquistas', label: 'Conquistas', icon: '🏅' },
   { to: '/backup', label: 'Backup', icon: '💾' },
 ]
 

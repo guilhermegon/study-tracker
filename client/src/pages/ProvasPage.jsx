@@ -653,6 +653,8 @@ export default function ProvasPage() {
                       Total: {totalQ} questões
                     </div>
                   )}
+
+
                 </div>
 
                 {/* Discipline table */}

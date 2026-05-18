@@ -185,5 +185,49 @@ export function runMigrations() {
     db.exec('PRAGMA foreign_keys = ON')
   }
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS gamification_unlocks (
+      achievement_id TEXT PRIMARY KEY,
+      unlocked_at    TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS gamification_settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS gamification_daily_missions (
+      mission_date  TEXT PRIMARY KEY,
+      week_id       INTEGER,
+      missions_json TEXT NOT NULL,
+      created_at    TEXT DEFAULT (datetime('now'))
+    );
+  `)
+
+  // Migração de IDs renomeados no redesign de conquistas (2025)
+  try {
+    const renames = [
+      ['schedule_5',       'sessions_5'],
+      ['schedule_30days',  'study_days_30'],
+      ['schedule_100days', 'study_days_100'],
+      ['funny_crise',      'secret_resilience'],
+      ['funny_taxa',       'study_days_7'],
+      ['funny_leu',        'questions_200'],
+      ['funny_questao',    'questions_200'],
+      ['funny_pegadinha',  'secret_resilience'],
+      ['funny_cafe',       'study_days_30'],
+      ['funny_concorrido', 'secret_long_streak'],
+      ['funny_pdf_gigante','schedule_week'],
+      ['funny_edital',     'pages_2500'],
+      ['funny_inimiga',    'streak_15'],
+    ]
+    for (const [oldId, newId] of renames) {
+      const existing = db.prepare('SELECT achievement_id FROM gamification_unlocks WHERE achievement_id = ?').get(newId)
+      if (!existing) {
+        db.prepare('UPDATE gamification_unlocks SET achievement_id = ? WHERE achievement_id = ?').run(newId, oldId)
+      } else {
+        db.prepare('DELETE FROM gamification_unlocks WHERE achievement_id = ?').run(oldId)
+      }
+    }
+  } catch {}
+
   console.log('Migrations executadas com sucesso.')
 }

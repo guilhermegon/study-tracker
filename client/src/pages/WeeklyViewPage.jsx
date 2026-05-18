@@ -8,7 +8,16 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { getSubjectColor } from '../utils/subjectColors'
 
-const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+const DIA_OFFSET = { Dom: 0, Seg: 1, Ter: 2, Qua: 3, Qui: 4, Sex: 5, Sáb: 6 }
+
+function getDiaDate(dateStart, dia) {
+  if (!dateStart) return null
+  const d = new Date(dateStart + 'T12:00:00')
+  d.setDate(d.getDate() + (DIA_OFFSET[dia] ?? 0))
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
 
 const DIA_COLORS = {
   Seg: { hex: '#0d9488', text: 'text-teal-600',   dot: 'bg-teal-500'   },
@@ -473,6 +482,11 @@ export default function WeeklyViewPage() {
                   <h2 className={`text-sm font-semibold uppercase tracking-wide flex items-center gap-2 ${DIA_COLORS[dia].text}`}>
                     <span className={`w-2.5 h-2.5 rounded-full ${DIA_COLORS[dia].dot}`} />
                     <span>{dia}</span>
+                    {selectedWeek?.date_start && (
+                      <span className="text-xs font-normal text-gray-400 normal-case tracking-normal">
+                        {getDiaDate(selectedWeek.date_start, dia)}
+                      </span>
+                    )}
                     <span className="text-xs font-normal text-gray-400">
                       ({dayEntries.filter(e => e.estudado).length}/{dayEntries.length} estudadas)
                     </span>

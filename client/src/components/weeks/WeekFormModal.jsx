@@ -32,6 +32,18 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
     }
   }, [open, isEdit, week?.id])
 
+  function snapToSunday(dateStr) {
+    if (!dateStr) return { date_start: '', date_end: '' }
+    const d = new Date(dateStr + 'T12:00:00')
+    const dayOfWeek = d.getDay() // 0=Sun, 1=Mon, ...
+    d.setDate(d.getDate() - dayOfWeek) // rewind to Sunday
+    const pad = n => String(n).padStart(2, '0')
+    const sunday = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    d.setDate(d.getDate() + 6) // forward 6 days to Saturday
+    const saturday = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    return { date_start: sunday, date_end: saturday }
+  }
+
   function toggle(sub) {
     setSubjects(prev =>
       prev.find(s => s.id === sub.id)
@@ -99,14 +111,13 @@ export default function WeekFormModal({ open, onClose, onSaved, week = null }) {
               placeholder="ex: PAULA | ANPD" />
           </div>
           <div>
-            <label className="label">Data início *</label>
+            <label className="label">Data início (domingo) *</label>
             <input type="date" className="input" value={form.date_start}
-              onChange={e => setForm(f => ({ ...f, date_start: e.target.value }))} required />
+              onChange={e => setForm(f => ({ ...f, ...snapToSunday(e.target.value) }))} required />
           </div>
           <div>
-            <label className="label">Data fim *</label>
-            <input type="date" className="input" value={form.date_end}
-              onChange={e => setForm(f => ({ ...f, date_end: e.target.value }))} required />
+            <label className="label">Data fim (sábado)</label>
+            <input type="date" className="input bg-gray-50 text-gray-500 cursor-not-allowed" value={form.date_end} readOnly tabIndex={-1} />
           </div>
         </div>
 

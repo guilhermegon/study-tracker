@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import { useAppToast } from '../components/layout/AppShell'
 import { SUBJECT_PALETTE } from '../utils/subjectColors'
+import { useSubjectGamification } from '../hooks/useGamification'
+import ProgressBar from '../components/gamification/ProgressBar'
 
 function ColorPicker({ value, onChange, size = 'md' }) {
   const sz = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'
@@ -32,6 +34,8 @@ export default function DisciplinasPage() {
   const toast = useAppToast()
   const [subjects, setSubjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const { subjects: subjectStats } = useSubjectGamification()
+  const statsById = Object.fromEntries(subjectStats.map(s => [s.id, s]))
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState(null)
   const [adding, setAdding] = useState(false)
@@ -187,6 +191,19 @@ export default function DisciplinasPage() {
                     : <span className="w-3 h-3 rounded-full flex-shrink-0 bg-gradient-to-br from-teal-400 via-violet-400 to-rose-400" title="Cor automática" />
                   }
                   <span className="flex-1 text-sm font-medium text-gray-800">{s.name}</span>
+                  {(() => {
+                    const st = statsById[s.id]
+                    if (!st || st.xp === 0) return null
+                    return (
+                      <div className="hidden sm:flex items-center gap-2 flex-shrink-0 mr-2">
+                        <span className="text-xs font-semibold text-teal-600 tabular-nums">Nv.{st.level}</span>
+                        <div className="w-20">
+                          <ProgressBar percent={st.progress} color="teal" size="sm" />
+                        </div>
+                        <span className="text-xs text-gray-400 tabular-nums">{st.xp} XP</span>
+                      </div>
+                    )
+                  })()}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(s)}

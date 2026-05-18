@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useWeekContext } from '../store/weekContext'
 import { api } from '../api/client'
+import { useGamification } from '../hooks/useGamification'
+import LevelCard from '../components/gamification/LevelCard'
+import StreakCard from '../components/gamification/StreakCard'
+import DailyMissions from '../components/gamification/DailyMissions'
+import RecentAchievements from '../components/gamification/RecentAchievements'
+import WeeklyBoss from '../components/gamification/WeeklyBoss'
+import PersonalRecords from '../components/gamification/PersonalRecords'
+import AchievementUnlockModal from '../components/gamification/AchievementUnlockModal'
 
 function StatCard({ label, value, unit, color }) {
   const colors = {
@@ -21,9 +29,10 @@ function StatCard({ label, value, unit, color }) {
 export default function HomePage() {
   const { selectedWeekId, selectedWeek, weeks } = useWeekContext()
   const [summary, setSummary] = useState(null)
-  const [streak, setStreak] = useState(null)
   const [updateInfo, setUpdateInfo] = useState(null)
-  const [updateState, setUpdateState] = useState('idle') // 'idle' | 'loading' | 'done'
+  const [updateState, setUpdateState] = useState('idle')
+  const [unlockModal, setUnlockModal] = useState(null)
+  const { profile, loading: gamificationLoading } = useGamification(selectedWeekId)
 
   useEffect(() => {
     if (!selectedWeekId) return
@@ -31,12 +40,14 @@ export default function HomePage() {
   }, [selectedWeekId])
 
   useEffect(() => {
-    api.getStreak().then(setStreak).catch(console.error)
+    api.checkUpdate().then(setUpdateInfo).catch(() => {})
   }, [])
 
   useEffect(() => {
-    api.checkUpdate().then(setUpdateInfo).catch(() => {})
-  }, [])
+    if (!profile?.newUnlockIds?.length) return
+    const first = profile.achievements?.all?.find(a => profile.newUnlockIds.includes(a.id))
+    if (first) setUnlockModal(first)
+  }, [profile?.newUnlockIds, profile?.achievements?.all])
 
   async function handleUpdate() {
     setUpdateState('loading')
@@ -97,9 +108,10 @@ export default function HomePage() {
   return (
     <>
       {updateBanner}
+      <AchievementUnlockModal achievement={unlockModal} onClose={() => setUnlockModal(null)} />
       <div className="p-8 max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Olá2! 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Olá! 👋</h1>
           {selectedWeek && (
             <p className="text-gray-500 mt-1">
               Semana atual: <span className="font-medium text-gray-700">{selectedWeek.name}</span>
@@ -111,52 +123,13 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Streak widget */}
-        {streak !== null && (
-          <div className={`mb-8 rounded-2xl px-6 py-5 flex items-center gap-6 ${
-            streak.streak > 0
-              ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200'
-              : 'bg-gray-50 border border-gray-200'
-          }`}>
-            {/* Flame */}
-            <div className={`text-5xl leading-none select-none ${streak.streak > 0 ? '' : 'grayscale opacity-40'}`}>
-              🔥
-            </div>
-
-            {/* Sequência atual */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2">
-                <span className={`text-5xl font-extrabold tabular-nums leading-none ${streak.streak > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
-                  {streak.streak}
-                </span>
-                <span className={`text-lg font-semibold ${streak.streak > 0 ? 'text-orange-400' : 'text-gray-400'}`}>
-                  {streak.streak === 1 ? 'dia seguido' : 'dias seguidos'}
-                </span>
-              </div>
-              <p className="text-sm mt-1 text-gray-500">
-                {streak.streak > 0
-                  ? 'Sequência atual de estudo — continue assim!'
-                  : 'Nenhuma sequência ativa. Estude hoje para começar!'}
-              </p>
-            </div>
-
-            {/* Divisor */}
-            <div className="w-px self-stretch bg-orange-100 shrink-0" />
-
-            {/* Recorde */}
-            <div className="text-center shrink-0">
-              <div className="flex items-baseline justify-center gap-1.5">
-                <span className="text-3xl font-extrabold tabular-nums text-amber-500">{streak.bestStreak}</span>
-                <span className="text-sm font-medium text-amber-400">{streak.bestStreak === 1 ? 'dia' : 'dias'}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 justify-center">
-                <span>🏆</span> Melhor sequência
-              </p>
-            </div>
-          </div>
+        {!gamificationLoading && profile && (
+          <>
+            <LevelCard level={profile.level} />
+            <StreakCard streak={profile.streak} />
+          </>
         )}
 
-        {/* Summary cards */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <StatCard label="Sessões de estudo" value={summary.sessoes_estudadas} color="blue" />
@@ -171,7 +144,19 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Quick actions */}
+        {!gamificationLoading && profile && (
+          <>
+            <DailyMissions
+              missions={profile.missions}
+              allCompleted={profile.missions?.allCompleted}
+              allBonusXp={profile.missions?.allBonusXp}
+            />
+            <RecentAchievements achievements={profile.achievements?.recent} />
+            <WeeklyBoss boss={profile.boss} />
+            <PersonalRecords records={profile.records} />
+          </>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           <Link to="/semana" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📋</div>
@@ -191,6 +176,12 @@ export default function HomePage() {
             <p className="text-sm text-gray-400 mt-1">Totais consolidados por semana</p>
           </Link>
 
+          <Link to="/conquistas" className="card hover:shadow-md transition-shadow group cursor-pointer">
+            <div className="text-3xl mb-3">🏅</div>
+            <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Conquistas</h3>
+            <p className="text-sm text-gray-400 mt-1">Badges e progresso de gamificação</p>
+          </Link>
+
           <Link to="/notas" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📝</div>
             <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Notas</h3>
@@ -206,13 +197,13 @@ export default function HomePage() {
           <Link to="/disciplinas" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📖</div>
             <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Disciplinas</h3>
-            <p className="text-sm text-gray-400 mt-1">Gerencie todas as disciplinas</p>
+            <p className="text-sm text-gray-400 mt-1">Níveis, XP e stats por matéria</p>
           </Link>
 
-          <Link to="/disciplinas" className="card hover:shadow-md transition-shadow group cursor-pointer">
+          <Link to="/provas" className="card hover:shadow-md transition-shadow group cursor-pointer">
             <div className="text-3xl mb-3">📝</div>
             <h3 className="font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">Provas</h3>
-            <p className="text-sm text-gray-400 mt-1">Gerencie todas as provas</p>
+            <p className="text-sm text-gray-400 mt-1">Simulados e modo Cebraspe</p>
           </Link>
 
           <Link to="/backup" className="card hover:shadow-md transition-shadow group cursor-pointer">
