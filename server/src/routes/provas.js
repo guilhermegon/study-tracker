@@ -4,14 +4,14 @@ import db from '../db/connection.js'
 const router = Router()
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-const getConcursoIds = db.prepare(
-  'SELECT concurso_id FROM prova_concursos WHERE prova_id = ?'
-)
 function withLinks(prova) {
+  const concursoIds = db.prepare(
+    'SELECT concurso_id FROM prova_concursos WHERE prova_id = ?'
+  ).all(prova.id).map(r => r.concurso_id)
   return {
     ...prova,
     anula: !!prova.anula,
-    concurso_ids: getConcursoIds.all(prova.id).map(r => r.concurso_id),
+    concurso_ids: concursoIds,
   }
 }
 function withBool(q) {
