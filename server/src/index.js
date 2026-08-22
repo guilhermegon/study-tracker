@@ -20,6 +20,8 @@ import authRouter from './routes/auth.js'
 import usersRouter from './routes/users.js'
 import requireAuth from './middleware/requireAuth.js'
 import csrfProtection from './middleware/csrf.js'
+import trackActivity from './middleware/trackActivity.js'
+import { startDailyBackupScheduler } from './jobs/dailyBackupEmail.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -42,9 +44,13 @@ app.use(helmet({ strictTransportSecurity: false }))
 app.use(express.json())
 app.use('/api/backup/restore', express.raw({ type: () => true, limit: '100mb' }))
 app.use(csrfProtection)
+app.use(trackActivity)
 
 // Run migrations on startup
 runMigrations()
+
+// Verifica diariamente se há dados novos pra mandar backup por e-mail
+startDailyBackupScheduler()
 
 // Routes
 app.use('/api/auth', authRouter)

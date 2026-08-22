@@ -3,6 +3,12 @@ services:
     image: ghcr.io/guilhermegon/study-tracker:latest
     build: .
     restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - BACKUP_EMAIL_FROM=${BACKUP_EMAIL_FROM:-onboarding@resend.dev}
+      - BACKUP_EMAIL_TO=${BACKUP_EMAIL_TO:-paulaayres@hotmail.com}
+      - BACKUP_EMAIL_HOUR=${BACKUP_EMAIL_HOUR:-23}
     volumes:
       - ./server/data:/app/server/data
     expose:
