@@ -3,6 +3,7 @@ const BASE = '/api'
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
+    credentials: 'include',
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
@@ -14,6 +15,19 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Auth
+  login: (username, password) => request('/auth/login', { method: 'POST', body: { username, password } }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  getMe: () => request('/auth/me'),
+  changePassword: (currentPassword, newPassword) =>
+    request('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } }),
+
+  // Users
+  getUsers: () => request('/users'),
+  createUser: (data) => request('/users', { method: 'POST', body: data }),
+  updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: data }),
+  deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
+
   // Weeks
   getWeeks: () => request('/weeks'),
   getWeek: (id) => request(`/weeks/${id}`),

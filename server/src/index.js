@@ -17,6 +17,9 @@ import updateRouter from './routes/update.js'
 import backupRouter from './routes/backup.js'
 import provasRouter from './routes/provas.js'
 import gamificationRouter from './routes/gamification.js'
+import authRouter from './routes/auth.js'
+import usersRouter from './routes/users.js'
+import requireAuth from './middleware/requireAuth.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -32,6 +35,8 @@ app.use('/api/backup/restore', express.raw({ type: () => true, limit: '100mb' })
 runMigrations()
 
 // Routes
+app.use('/api/auth', authRouter)
+app.use('/api', requireAuth)
 app.use('/api/weeks', weeksRouter)
 app.use('/api/weeks/:id/entries', entriesRouter)
 app.use('/api/subjects', subjectsRouter)
@@ -45,6 +50,7 @@ app.use('/api/update', updateRouter)
 app.use('/api/backup', backupRouter)
 app.use('/api/provas', provasRouter)
 app.use('/api/gamification', gamificationRouter)
+app.use('/api/users', usersRouter)
 
 // Servir frontend (produção)
 const clientDist = join(__dirname, '../../client/dist')

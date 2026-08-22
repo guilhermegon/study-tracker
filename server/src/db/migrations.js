@@ -1,4 +1,5 @@
 import db from './connection.js'
+import { hashPassword } from '../auth/password.js'
 
 export function runMigrations() {
   db.exec(`
@@ -228,6 +229,31 @@ export function runMigrations() {
       }
     }
   } catch {}
+
+  // Autenticação
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      username              TEXT NOT NULL UNIQUE,
+      password_hash         TEXT NOT NULL,
+      must_change_password  INTEGER NOT NULL DEFAULT 0,
+      created_at            TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token       TEXT PRIMARY KEY,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at  TEXT NOT NULL
+    );
+  `)
+
+  // Cria usuário padrão no primeiro boot (nenhum usuário cadastrado ainda)
+  const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c
+  if (userCount === 0) {
+    db.prepare(
+      'INSERT INTO users (username, password_hash, must_change_password) VALUES (?, ?, 1)'
+    ).run('admin', hashPassword('admin123'))
+  }
 
   console.log('Migrations executadas com sucesso.')
 }

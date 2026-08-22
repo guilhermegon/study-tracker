@@ -4,6 +4,7 @@ import { useWeekContext } from '../../store/weekContext'
 import WeekFormModal from '../weeks/WeekFormModal'
 import DuplicateWeekModal from '../weeks/DuplicateWeekModal'
 import { api } from '../../api/client'
+import { useAuth } from '../../store/authContext'
 import packageJson from '../../../../package.json'
 import logoImg from '../../assets/logo.jpeg'
 
@@ -18,10 +19,12 @@ const NAV = [
   { to: '/provas', label: 'Provas', icon: '📝' },
   { to: '/conquistas', label: 'Conquistas', icon: '🏅' },
   { to: '/backup', label: 'Backup', icon: '💾' },
+  { to: '/usuarios', label: 'Usuários', icon: '👤' },
 ]
 
 export default function Sidebar({ collapsed = false, onToggle }) {
   const { weeks, selectedWeekId, setSelectedWeekId, selectedWeek, loadWeeks, bumpSubjectsKey } = useWeekContext()
+  const { user, logout } = useAuth()
   const [modal, setModal] = useState(false)
   const [editWeek, setEditWeek] = useState(null)
   const [duplicateModal, setDuplicateModal] = useState(false)
@@ -145,6 +148,21 @@ export default function Sidebar({ collapsed = false, onToggle }) {
             </NavLink>
           ))}
         </nav>
+
+        {user && (
+          <div className={`px-3 py-3 border-t border-gray-100 flex items-center ${collapsed ? 'justify-center' : 'justify-between'} gap-2`}>
+            {!collapsed && (
+              <span className="text-xs text-gray-500 font-medium truncate" title={user.username}>{user.username}</span>
+            )}
+            <button
+              onClick={logout}
+              className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-gray-100 shrink-0"
+              title="Sair"
+            >
+              <span className="text-sm">🚪</span>
+            </button>
+          </div>
+        )}
 
         <div className={`px-3 py-3 border-t border-gray-100 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
           {!collapsed && <p className="text-xs text-gray-300">Study Tracker v{version}</p>}
