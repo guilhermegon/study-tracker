@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { existsSync, writeFileSync, createReadStream, statSync, mkdirSync } from 'fs'
 import db from '../db/connection.js'
+import { isDocker } from '../utils/docker.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = join(__dirname, '../../../')
@@ -80,27 +81,31 @@ router.post('/restore', (req, res) => {
   res.json({ ok: true, message: 'Backup restaurado. O servidor está reiniciando.' })
 
   // 5. Spawna apenas o restart do servidor (banco já está no lugar)
-  const isWin = process.platform === 'win32'
-  const restartCmd = isWin
-    ? spawn('cmd.exe', ['/c', `timeout /t 2 /nobreak >nul && start "Study Tracker" node --experimental-sqlite server\\src\\index.js`], {
-        detached: true,
-        stdio: 'ignore',
-        cwd: PROJECT_ROOT,
-        shell: false
-      })
-    : hasSystemdService()
-      ? spawn('/bin/bash', ['-c', 'sleep 2 && sudo -n systemctl restart study-tracker'], {
+  //    Em Docker não faz nada aqui: o container reinicia sozinho via
+  //    restart policy assim que o processo principal sair (passo 6).
+  if (!isDocker()) {
+    const isWin = process.platform === 'win32'
+    const restartCmd = isWin
+      ? spawn('cmd.exe', ['/c', `timeout /t 2 /nobreak >nul && start "Study Tracker" node --experimental-sqlite server\\src\\index.js`], {
           detached: true,
           stdio: 'ignore',
-          cwd: PROJECT_ROOT
+          cwd: PROJECT_ROOT,
+          shell: false
         })
-      : spawn('/bin/bash', ['-c', 'sleep 2 && nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &'], {
-          detached: true,
-          stdio: 'ignore',
-          cwd: PROJECT_ROOT
-        })
+      : hasSystemdService()
+        ? spawn('/bin/bash', ['-c', 'sleep 2 && sudo -n systemctl restart study-tracker'], {
+            detached: true,
+            stdio: 'ignore',
+            cwd: PROJECT_ROOT
+          })
+        : spawn('/bin/bash', ['-c', 'sleep 2 && nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &'], {
+            detached: true,
+            stdio: 'ignore',
+            cwd: PROJECT_ROOT
+          })
 
-  restartCmd.unref()
+    restartCmd.unref()
+  }
 
   // 6. Encerra o processo atual
   setTimeout(() => process.exit(0), 1000)

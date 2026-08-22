@@ -71,7 +71,48 @@ Aplicação local para organização e acompanhamento de estudos para concursos 
 
 ---
 
-## Instalação
+## Docker (recomendado para servidor/VM, com HTTPS)
+
+A forma mais simples de rodar o Study Tracker com HTTPS é via Docker. O `docker-compose.yml` sobe dois containers: o app (Node + client já buildado) e um [Caddy](https://caddyserver.com/) na frente cuidando do certificado — automático via Let's Encrypt quando há um domínio real, ou autoassinado quando não há (ex: rodando local).
+
+### Pré-requisitos
+- [Docker](https://docs.docker.com/get-docker/) e Docker Compose instalados (`docker compose version` pra conferir).
+
+### Rodando localmente
+
+Sem nenhuma configuração extra — sem precisar criar `.env` — o compose usa `localhost` e o Caddy sobe com certificado HTTPS autoassinado:
+
+```bash
+docker compose up -d --build
+```
+
+Acesse **https://localhost** (o navegador vai avisar que o certificado não é confiável — é esperado nesse modo, é autoassinado; pode seguir em frente).
+
+Ver logs / parar:
+```bash
+docker compose logs -f
+docker compose down
+```
+
+Os dados ficam em `server/data/` no host (montado como volume), sobrevivem a rebuilds e restarts.
+
+### Rodando em produção (VM com domínio)
+
+Sem domínio próprio, um subdomínio gratuito do [DuckDNS](https://www.duckdns.org/) apontando pro IP da VM já é suficiente para o Let's Encrypt emitir certificado real (não é possível emitir certificado para IP puro).
+
+```bash
+cp .env.example .env
+# edite o .env e defina DOMAIN=seusubdominio.duckdns.org
+docker compose up -d --build
+```
+
+O Caddy detecta que `DOMAIN` é um domínio público de verdade e obtém o certificado Let's Encrypt automaticamente (renovação também é automática).
+
+> **Nota**: o botão "Atualizar" dentro do app (baseado em `git pull`) não funciona rodando em Docker — nesse modo, atualizar é `git pull` no host seguido de `docker compose up -d --build`.
+
+---
+
+## Instalação (sem Docker)
 
 ### Windows
 

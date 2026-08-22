@@ -3,6 +3,7 @@ import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync } from 'fs'
+import { isDocker } from '../utils/docker.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = join(__dirname, '../../../')
@@ -47,6 +48,12 @@ router.get('/check', async (_req, res) => {
 
 // POST /api/update/apply  body: { version: "v1.1.0" }
 router.post('/apply', (req, res) => {
+  if (isDocker()) {
+    return res.status(400).json({
+      error: 'Atualização automática não é suportada em Docker. No host, rode: docker compose pull && docker compose up -d --build'
+    })
+  }
+
   const { version } = req.body
   if (!version) return res.status(400).json({ error: 'version required' })
 
