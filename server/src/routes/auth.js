@@ -2,12 +2,11 @@ import { Router } from 'express'
 import { randomBytes } from 'node:crypto'
 import db from '../db/connection.js'
 import { hashPassword, verifyPassword } from '../auth/password.js'
-import { parseCookies, setSessionCookie, clearSessionCookie } from '../auth/cookies.js'
+import { parseCookies, setSessionCookie, clearSessionCookie, setCsrfCookie, clearCsrfCookie } from '../auth/cookies.js'
+import { SESSION_MAX_AGE } from '../auth/constants.js'
 import requireAuth from '../middleware/requireAuth.js'
 
 const router = Router()
-
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 dias, em segundos
 
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MS = 15 * 60 * 1000
@@ -60,6 +59,7 @@ router.post('/login', (req, res) => {
   ).run(token, user.id)
 
   setSessionCookie(req, res, token, SESSION_MAX_AGE)
+  setCsrfCookie(req, res, randomBytes(32).toString('hex'), SESSION_MAX_AGE)
   res.json({ id: user.id, username: user.username, must_change_password: !!user.must_change_password })
 })
 
@@ -68,6 +68,7 @@ router.post('/logout', (req, res) => {
   const { sid } = parseCookies(req.headers.cookie)
   if (sid) db.prepare('DELETE FROM sessions WHERE token = ?').run(sid)
   clearSessionCookie(req, res)
+  clearCsrfCookie(req, res)
   res.json({ ok: true })
 })
 

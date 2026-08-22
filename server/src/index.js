@@ -1,5 +1,5 @@
 import express from 'express'
-import cors from 'cors'
+import helmet from 'helmet'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { existsSync } from 'fs'
@@ -19,6 +19,7 @@ import gamificationRouter from './routes/gamification.js'
 import authRouter from './routes/auth.js'
 import usersRouter from './routes/users.js'
 import requireAuth from './middleware/requireAuth.js'
+import csrfProtection from './middleware/csrf.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -36,9 +37,11 @@ const PORT = 3001
 // para req.secure funcionar corretamente e o cookie de sessão usar HTTPS)
 app.set('trust proxy', 1)
 
-app.use(cors())
+// HSTS é setado pelo Caddy (camada de TLS); aqui ficaria duplicado
+app.use(helmet({ strictTransportSecurity: false }))
 app.use(express.json())
 app.use('/api/backup/restore', express.raw({ type: () => true, limit: '100mb' }))
+app.use(csrfProtection)
 
 // Run migrations on startup
 runMigrations()

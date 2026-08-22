@@ -1,5 +1,10 @@
 import { useState, useRef } from 'react'
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|; )csrf=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 async function downloadBackup() {
   const res = await fetch('/api/backup/download')
   if (!res.ok) throw new Error('Erro ao baixar backup.')
@@ -59,9 +64,13 @@ export default function BackupPage() {
     setErrorMsg('')
     try {
       const buffer = await restoreFile.arrayBuffer()
+      const csrfToken = getCsrfToken()
       const res = await fetch('/api/backup/restore', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+        },
         body: buffer,
       })
       const data = await res.json()
