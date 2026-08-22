@@ -1,7 +1,22 @@
 name: Deploy
 
+# Versionamento automático:
+# - commit direto na main (sem PR)            -> bump de PATCH  (2.0.0 -> 2.0.1)
+# - PR mergeado de branch comum (sem "release")-> bump de MINOR  (2.0.0 -> 2.1.0)
+# - PR mergeado de branch "release*"           -> bump de MAJOR  (2.0.0 -> 3.0.0)
+#
+# IMPORTANTE: a detecção de "commit direto" (vs. PR mergeado) depende do
+# commit de merge padrão do GitHub ("Merge pull request #N from ..."), que
+# só existe quando o PR é mergeado com a estratégia "Create a merge commit".
+# Se o repositório usar squash/rebase merge, configure para permitir só
+# merge commit em Settings > General > Pull Requests, senão um PR mergeado
+# pode disparar bump duplicado (o da PR + um de patch indevido).
+
 on:
   push:
+    branches: [main]
+  pull_request:
+    types: [closed]
     branches: [main]
 
 concurrency:
@@ -10,9 +25,67 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Determinar tipo de bump
+        id: bump
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            if [[ "$BRANCH" == release* ]]; then
+              echo "type=major" >> "$GITHUB_OUTPUT"
+            else
+              echo "type=minor" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            MSG=$(git log -1 --pretty=%s)
+            if [[ "$MSG" =~ ^Merge\ pull\ request\ #[0-9]+\ from ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "type=patch" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Calcular nova versão
+        if: steps.bump.outputs.skip != 'true'
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ steps.bump.outputs.type }}" in
+            major) NEW="$((MAJOR+1)).0.0" ;;
+            minor) NEW="$MAJOR.$((MINOR+1)).0" ;;
+            patch) NEW="$MAJOR.$MINOR.$((PATCH+1))" ;;
+          esac
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Atualizar package.json, commitar e criar tag
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${{ steps.version.outputs.new }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
+          git tag "v${{ steps.version.outputs.new }}"
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new }}"
+
       - name: Deploy via SSH
+        if: steps.bump.outputs.skip != 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VM_HOST }}
