@@ -1,4 +1,6 @@
 node_modules/
 server/data/study.db
+server/data/study.db-shm
+server/data/study.db-wal
 client/dist/
 .env

@@ -7,6 +7,42 @@ echo "  Study Tracker - Atualização"
 echo "========================================"
 echo ""
 
+# ── Linux com clone git: git pull + rebuild + restart do serviço ─────────
+if [[ "$(uname -s)" == "Linux" ]] && [ -d .git ]; then
+  echo "Atualizando via git pull..."
+  git fetch --quiet origin
+  git pull --ff-only
+
+  echo ""
+  echo "Instalando dependências..."
+  npm install > /dev/null 2>&1
+  npm install --prefix server > /dev/null 2>&1
+  npm install --prefix client > /dev/null 2>&1
+  echo "Compilando interface..."
+  npm run build --prefix client > /dev/null 2>&1
+
+  chmod +x start.sh update.sh restore.sh install.sh 2>/dev/null || true
+
+  echo ""
+  echo "Reiniciando servidor..."
+  if systemctl cat study-tracker.service &>/dev/null; then
+    sudo -n systemctl restart study-tracker
+  else
+    if command -v lsof &>/dev/null && lsof -ti:3001 &>/dev/null; then
+      kill "$(lsof -ti:3001)" 2>/dev/null || true
+      sleep 1
+    fi
+    nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &
+  fi
+
+  echo ""
+  echo "========================================"
+  echo "  Atualização concluída!"
+  echo "========================================"
+  exit 0
+fi
+
+# ── macOS, ou Linux instalado via zip (sem clone git): fluxo antigo ──────
 echo "Aguardando servidor encerrar..."
 sleep 4
 
