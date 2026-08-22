@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { existsSync, writeFileSync, createReadStream, statSync, mkdirSync } from 'fs'
@@ -11,6 +11,16 @@ const DB_PATH = join(__dirname, '../../data/study.db')
 const DATA_DIR = join(__dirname, '../../data')
 
 const router = Router()
+
+// Detecta se o app está rodando como serviço systemd (deploy em servidor/VM)
+function hasSystemdService() {
+  try {
+    execSync('systemctl cat study-tracker.service', { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
 
 // GET /api/backup/download — faz checkpoint do WAL e envia o arquivo
 router.get('/download', (req, res) => {
@@ -78,11 +88,17 @@ router.post('/restore', (req, res) => {
         cwd: PROJECT_ROOT,
         shell: false
       })
-    : spawn('/bin/bash', ['-c', 'sleep 2 && nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &'], {
-        detached: true,
-        stdio: 'ignore',
-        cwd: PROJECT_ROOT
-      })
+    : hasSystemdService()
+      ? spawn('/bin/bash', ['-c', 'sleep 2 && sudo -n systemctl restart study-tracker'], {
+          detached: true,
+          stdio: 'ignore',
+          cwd: PROJECT_ROOT
+        })
+      : spawn('/bin/bash', ['-c', 'sleep 2 && nohup node --experimental-sqlite server/src/index.js > /tmp/study-tracker.log 2>&1 &'], {
+          detached: true,
+          stdio: 'ignore',
+          cwd: PROJECT_ROOT
+        })
 
   restartCmd.unref()
 
