@@ -255,5 +255,13 @@ export function runMigrations() {
     ).run('admin', hashPassword('admin123'))
   }
 
+  // Metadados internos do app (ex: controle do backup diário por e-mail)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `)
+
   console.log('Migrations executadas com sucesso.')
 }
