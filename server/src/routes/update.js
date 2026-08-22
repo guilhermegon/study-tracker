@@ -26,13 +26,13 @@ const router = Router()
 
 // GET /api/update/check
 router.get('/check', async (_req, res) => {
+  const current = getCurrentVersion()
   try {
     const response = await fetch('https://api.github.com/repos/guilhermegon/study-tracker/tags', {
       headers: { 'User-Agent': 'study-tracker-app' }
     })
-    if (!response.ok) return res.json({ available: false })
+    if (!response.ok) return res.json({ available: false, current })
     const tags = await response.json()
-    const current = getCurrentVersion()
     const latest = tags
       .map(t => t.name.replace(/^v/, ''))
       .filter(v => /^\d+\.\d+\.\d+$/.test(v))
@@ -41,7 +41,7 @@ router.get('/check', async (_req, res) => {
     const available = semverGt(latest, current)
     res.json({ available, current, latest: `v${latest}` })
   } catch {
-    res.json({ available: false })
+    res.json({ available: false, current })
   }
 })
 
