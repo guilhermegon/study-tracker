@@ -13,7 +13,6 @@ import notesRouter from './routes/notes.js'
 import concursosRouter from './routes/concursos.js'
 import materiasRouter from './routes/materias.js'
 import conteudosRouter from './routes/conteudos.js'
-import updateRouter from './routes/update.js'
 import backupRouter from './routes/backup.js'
 import provasRouter from './routes/provas.js'
 import gamificationRouter from './routes/gamification.js'
@@ -56,7 +55,6 @@ app.use('/api/notes', notesRouter)
 app.use('/api/concursos', concursosRouter)
 app.use('/api/materias', materiasRouter)
 app.use('/api/conteudos', conteudosRouter)
-app.use('/api/update', updateRouter)
 app.use('/api/backup', backupRouter)
 app.use('/api/provas', provasRouter)
 app.use('/api/gamification', gamificationRouter)

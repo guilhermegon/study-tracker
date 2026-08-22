@@ -63,15 +63,7 @@ Aplicação local para organização e acompanhamento de estudos para concursos 
 
 ---
 
-## Requisitos
-
-- **Node.js v22 ou superior** — necessário para o módulo nativo `node:sqlite`
-  - Verificar versão instalada: `node -v`
-  - Download: https://nodejs.org
-
----
-
-## Docker (recomendado para servidor/VM, com HTTPS)
+## Como rodar (Docker)
 
 A forma mais simples de rodar o Study Tracker com HTTPS é via Docker. O `docker-compose.yml` sobe dois containers: o app (Node + client já buildado) e um [Caddy](https://caddyserver.com/) na frente cuidando do certificado — automático via Let's Encrypt quando há um domínio real, ou autoassinado quando não há (ex: rodando local).
 
@@ -108,82 +100,12 @@ docker compose up -d --build
 
 O Caddy detecta que `DOMAIN` é um domínio público de verdade e obtém o certificado Let's Encrypt automaticamente (renovação também é automática).
 
-> **Nota**: o botão "Atualizar" dentro do app (baseado em `git pull`) não funciona rodando em Docker — nesse modo, atualizar é `git pull` no host seguido de `docker compose up -d --build`.
+### Atualizando
 
----
-
-## Instalação (sem Docker)
-
-### Windows
-
-```bat
-install.bat
-```
-
-### Linux / macOS
-
+Na VM, o deploy é automático: todo push na `main` (ou PR mergeado) dispara o workflow do GitHub Actions, que já cuida de versionar e atualizar o servidor sozinho (veja `.github/workflows/deploy.yml`). Pra atualizar manualmente por SSH, se precisar:
 ```bash
-chmod +x install.sh
-./install.sh
+git pull && docker compose up -d --build
 ```
-
-O instalador irá:
-1. Verificar se o Node.js v22+ está instalado
-2. Instalar as dependências do servidor e do cliente
-3. Compilar o frontend
-4. Criar um atalho na Área de Trabalho para iniciar o app
-
----
-
-## Como iniciar
-
-### Via atalho
-Após a instalação, clique duas vezes no atalho criado na Área de Trabalho:
-- **Windows:** `Study Tracker.lnk`
-- **macOS:** `Study Tracker.command`
-- **Linux:** `study-tracker.desktop`
-
-### Via terminal
-
-**Windows:**
-```bat
-start.bat
-```
-
-**Linux / macOS:**
-```bash
-./start.sh
-```
-
-O app abrirá automaticamente em **http://localhost:3001** no navegador padrão.
-
----
-
-## Desenvolvimento
-
-### Pré-requisitos
-Instalar dependências uma vez:
-```bash
-npm install --prefix server
-npm install --prefix client
-```
-
-### Iniciar em modo desenvolvimento
-```bash
-npm run dev
-```
-Sobe o servidor Express na porta `3001` e o Vite dev server na porta `5173` simultaneamente.
-
-| Serviço | URL |
-|---------|-----|
-| Frontend (Vite) | http://localhost:5173 |
-| API (Express) | http://localhost:3001 |
-
-### Compilar para produção
-```bash
-npm run build --prefix client
-```
-Gera os arquivos em `client/dist/`. Em produção, o próprio servidor Express serve o frontend.
 
 ---
 
@@ -202,15 +124,16 @@ study-tracker/
 │
 ├── server/                  # Backend Express
 │   ├── src/
-│   │   ├── db/              # Conexão e migrations SQLite
-│   │   └── routes/          # Endpoints da API REST
+│   │   ├── auth/             # Hash de senha e cookies de sessão
+│   │   ├── db/               # Conexão e migrations SQLite
+│   │   ├── middleware/       # Autenticação
+│   │   └── routes/           # Endpoints da API REST
 │   └── data/
 │       └── study.db         # Banco de dados (gerado automaticamente)
 │
-├── install.bat              # Instalador Windows
-├── install.sh               # Instalador Linux/macOS
-├── start.bat                # Iniciador Windows
-└── start.sh                 # Iniciador Linux/macOS
+├── Dockerfile               # Build da imagem (client + server)
+├── docker-compose.yml       # Orquestra app + Caddy (proxy reverso/HTTPS)
+└── Caddyfile                # Configuração do Caddy
 ```
 
 ---

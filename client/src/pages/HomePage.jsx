@@ -29,8 +29,6 @@ function StatCard({ label, value, unit, color }) {
 export default function HomePage() {
   const { selectedWeekId, selectedWeek, weeks } = useWeekContext()
   const [summary, setSummary] = useState(null)
-  const [updateInfo, setUpdateInfo] = useState(null)
-  const [updateState, setUpdateState] = useState('idle')
   const [unlockModal, setUnlockModal] = useState(null)
   const { profile, loading: gamificationLoading } = useGamification(selectedWeekId)
 
@@ -40,74 +38,28 @@ export default function HomePage() {
   }, [selectedWeekId])
 
   useEffect(() => {
-    api.checkUpdate().then(setUpdateInfo).catch(() => {})
-  }, [])
-
-  useEffect(() => {
     if (!profile?.newUnlockIds?.length) return
     const first = profile.achievements?.all?.find(a => profile.newUnlockIds.includes(a.id))
     if (first) setUnlockModal(first)
   }, [profile?.newUnlockIds, profile?.achievements?.all])
 
-  async function handleUpdate() {
-    setUpdateState('loading')
-    try {
-      await api.applyUpdate(updateInfo.latest)
-      setUpdateState('done')
-    } catch {
-      setUpdateState('idle')
-    }
-  }
-
-  const updateBanner = (
-    <>
-      {updateInfo?.available && updateState !== 'done' && (
-        <div className="bg-teal-600 text-white px-6 py-3 flex items-center justify-between text-sm">
-          <span>
-            Nova versão disponível: <strong>{updateInfo.latest}</strong>
-            {' '}(atual: v{updateInfo.current})
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleUpdate}
-              disabled={updateState === 'loading'}
-              className="bg-white text-teal-600 font-semibold px-4 py-1 rounded hover:bg-teal-50 disabled:opacity-60"
-            >
-              {updateState === 'loading' ? 'Atualizando...' : 'Atualizar'}
-            </button>
-            <button onClick={() => setUpdateInfo(null)} className="opacity-70 hover:opacity-100">✕</button>
-          </div>
-        </div>
-      )}
-      {updateState === 'done' && (
-        <div className="bg-green-600 text-white px-6 py-3 text-sm text-center">
-          Atualização aplicada! O servidor está reiniciando — recarregue a página em alguns segundos.
-        </div>
-      )}
-    </>
-  )
-
   if (!selectedWeekId || weeks.length === 0) {
     return (
-      <>
-        {updateBanner}
-        <div className="flex flex-col items-center justify-center h-full text-center px-8">
-          <p className="text-6xl mb-6">📚</p>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Bem-vinda ao Study Tracker!</h1>
-          <p className="text-gray-500 mb-8 max-w-sm">
-            Registre sua rotina semanal de estudos e acompanhe seu progresso com gráficos e métricas.
-          </p>
-          <p className="text-sm text-gray-400">
-            Comece criando uma semana na barra lateral →
-          </p>
-        </div>
-      </>
+      <div className="flex flex-col items-center justify-center h-full text-center px-8">
+        <p className="text-6xl mb-6">📚</p>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Bem-vinda ao Study Tracker!</h1>
+        <p className="text-gray-500 mb-8 max-w-sm">
+          Registre sua rotina semanal de estudos e acompanhe seu progresso com gráficos e métricas.
+        </p>
+        <p className="text-sm text-gray-400">
+          Comece criando uma semana na barra lateral →
+        </p>
+      </div>
     )
   }
 
   return (
     <>
-      {updateBanner}
       <AchievementUnlockModal achievement={unlockModal} onClose={() => setUnlockModal(null)} />
       <div className="p-8 max-w-4xl mx-auto">
         <div className="mb-8">

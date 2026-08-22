@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useWeekContext } from '../../store/weekContext'
 import WeekFormModal from '../weeks/WeekFormModal'
 import DuplicateWeekModal from '../weeks/DuplicateWeekModal'
@@ -28,11 +28,6 @@ export default function Sidebar({ collapsed = false, onToggle }) {
   const [modal, setModal] = useState(false)
   const [editWeek, setEditWeek] = useState(null)
   const [duplicateModal, setDuplicateModal] = useState(false)
-  const [version, setVersion] = useState(packageJson.version)
-
-  useEffect(() => {
-    api.checkUpdate().then(info => info?.current && setVersion(info.current)).catch(() => {})
-  }, [])
 
   function handleSaved(week) {
     loadWeeks()
@@ -165,7 +160,7 @@ export default function Sidebar({ collapsed = false, onToggle }) {
         )}
 
         <div className={`px-3 py-3 border-t border-gray-100 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-          {!collapsed && <p className="text-xs text-gray-300">Study Tracker v{version}</p>}
+          {!collapsed && <p className="text-xs text-gray-300">Study Tracker v{packageJson.version}</p>}
           <button
             onClick={onToggle}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"

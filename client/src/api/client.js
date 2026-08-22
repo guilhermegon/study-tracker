@@ -105,10 +105,6 @@ export const api = {
   setStreakProtection: (enabled) =>
     request('/gamification/streak-protection', { method: 'POST', body: { enabled } }),
 
-  // Update
-  checkUpdate: () => request('/update/check'),
-  applyUpdate: (version) => request('/update/apply', { method: 'POST', body: { version } }),
-
   // Provas
   getProvas: () => request('/provas'),
   createProva: (data) => request('/provas', { method: 'POST', body: data }),
