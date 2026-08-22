@@ -27,8 +27,9 @@ const router = Router()
 
 // GET /api/update/check
 router.get('/check', async (_req, res) => {
-  const current = getCurrentVersion()
+  let current = null
   try {
+    current = getCurrentVersion()
     const response = await fetch('https://api.github.com/repos/guilhermegon/study-tracker/tags', {
       headers: { 'User-Agent': 'study-tracker-app' }
     })

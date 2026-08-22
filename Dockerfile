@@ -12,6 +12,9 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
+# server/src/routes/update.js lê o package.json da raiz para reportar a versão
+COPY package.json ./
+
 COPY server/package*.json ./server/
 RUN npm install --prefix server --omit=dev
 

@@ -24,6 +24,12 @@ import requireAuth from './middleware/requireAuth.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+// Evita que um erro não tratado numa rota async derrube o processo inteiro
+// (Express 4 não captura rejeições de promises automaticamente)
+process.on('unhandledRejection', err => {
+  console.error('Unhandled rejection:', err)
+})
+
 const app = express()
 const PORT = 3001
 
