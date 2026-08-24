@@ -261,6 +261,14 @@ export function runMigrations() {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS email_log (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      sent_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      recipient  TEXT NOT NULL,
+      success    INTEGER NOT NULL,
+      error      TEXT
+    );
   `)
 
   console.log('Migrations executadas com sucesso.')

@@ -111,4 +111,12 @@ router.post('/restore', (req, res) => {
   setTimeout(() => process.exit(0), 1000)
 })
 
+// GET /api/backup/email-log — histórico do backup diário por e-mail (últimos 30 dias)
+router.get('/email-log', (req, res) => {
+  const rows = db.prepare(
+    'SELECT id, sent_at, recipient, success, error FROM email_log ORDER BY sent_at DESC'
+  ).all()
+  res.json(rows.map(r => ({ ...r, success: !!r.success })))
+})
+
 export default router

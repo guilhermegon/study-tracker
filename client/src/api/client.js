@@ -34,6 +34,9 @@ export const api = {
   changePassword: (currentPassword, newPassword) =>
     request('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } }),
 
+  // Backup
+  getEmailLog: () => request('/backup/email-log'),
+
   // Users
   getUsers: () => request('/users'),
   createUser: (data) => request('/users', { method: 'POST', body: data }),

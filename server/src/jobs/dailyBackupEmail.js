@@ -28,9 +28,20 @@ function backupFilename(now) {
   return `study-tracker-backup-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.db`
 }
 
+function logEmailAttempt(recipient, success, error) {
+  db.prepare(
+    'INSERT INTO email_log (recipient, success, error) VALUES (?, ?, ?)'
+  ).run(recipient, success ? 1 : 0, error || null)
+
+  // Mantém só os últimos 30 dias de log, pra não crescer sem limite
+  db.prepare("DELETE FROM email_log WHERE sent_at < datetime('now', '-30 days')").run()
+}
+
 async function sendBackupEmail() {
   if (!RESEND_API_KEY) {
-    console.error('[backup-email] RESEND_API_KEY não configurada, pulando envio.')
+    const msg = 'RESEND_API_KEY não configurada'
+    console.error(`[backup-email] ${msg}, pulando envio.`)
+    logEmailAttempt(EMAIL_TO, false, msg)
     return false
   }
 
@@ -43,28 +54,39 @@ async function sendBackupEmail() {
   const now = new Date()
   const fileBuffer = readFileSync(DB_PATH)
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: EMAIL_FROM,
-      to: EMAIL_TO,
-      subject: `Backup diário - Study Tracker (${now.toLocaleDateString('pt-BR')})`,
-      text: 'Segue em anexo o backup do banco de dados do Study Tracker de hoje. Pode ser restaurado direto pela tela de Backup do app.',
-      attachments: [{ filename: backupFilename(now), content: fileBuffer.toString('base64') }],
-    }),
-  })
+  let res
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: EMAIL_TO,
+        subject: `Backup diário - Study Tracker (${now.toLocaleDateString('pt-BR')})`,
+        text: 'Segue em anexo o backup do banco de dados do Study Tracker de hoje. Pode ser restaurado direto pela tela de Backup do app.',
+        attachments: [{ filename: backupFilename(now), content: fileBuffer.toString('base64') }],
+      }),
+    })
+  } catch (err) {
+    const msg = `Falha de rede: ${err.message}`
+    console.error('[backup-email]', msg)
+    logEmailAttempt(EMAIL_TO, false, msg)
+    return false
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
-    console.error('[backup-email] Falha ao enviar e-mail:', res.status, body)
+    const msg = `HTTP ${res.status}: ${body}`
+    console.error('[backup-email] Falha ao enviar e-mail:', msg)
+    logEmailAttempt(EMAIL_TO, false, msg)
     return false
   }
 
   console.log('[backup-email] Backup enviado com sucesso para', EMAIL_TO)
+  logEmailAttempt(EMAIL_TO, true, null)
   return true
 }
 
