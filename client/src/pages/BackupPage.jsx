@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { api } from '../api/client'
 
 function getCsrfToken() {
   const match = document.cookie.match(/(?:^|; )csrf=([^;]+)/)
@@ -30,6 +31,10 @@ export default function BackupPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const fileInputRef = useRef(null)
 
+  const [showEmailLog, setShowEmailLog] = useState(false)
+  const [emailLog, setEmailLog] = useState(null)
+  const [emailLogLoading, setEmailLogLoading] = useState(false)
+
   async function handleDownload() {
     setDownloadState('loading')
     try {
@@ -51,6 +56,26 @@ export default function BackupPage() {
     setErrorMsg('')
     setRestoreFile(file)
     setRestoreState('idle')
+  }
+
+  async function toggleEmailLog() {
+    const next = !showEmailLog
+    setShowEmailLog(next)
+    if (next && emailLog === null) {
+      setEmailLogLoading(true)
+      try {
+        const rows = await api.getEmailLog()
+        setEmailLog(rows)
+      } catch {
+        setEmailLog([])
+      } finally {
+        setEmailLogLoading(false)
+      }
+    }
+  }
+
+  function formatLogDate(sentAt) {
+    return new Date(sentAt.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')
   }
 
   function handleRestoreClick() {
@@ -167,6 +192,52 @@ export default function BackupPage() {
                   )}
                 </button>
               </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Histórico do backup diário por e-mail */}
+      <section className="card mt-6">
+        <div className="flex items-start gap-4">
+          <div className="text-3xl">📧</div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800 mb-1">Backup diário por e-mail</h2>
+              <button
+                onClick={toggleEmailLog}
+                className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+              >
+                {showEmailLog ? 'Ocultar histórico' : 'Ver histórico de envios'}
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Envio automático diário, só quando há alteração de dados. Histórico dos últimos 30 dias.
+            </p>
+
+            {showEmailLog && (
+              emailLogLoading ? (
+                <p className="text-sm text-gray-500">Carregando...</p>
+              ) : emailLog && emailLog.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhum envio registrado ainda.</p>
+              ) : (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                  {emailLog && emailLog.map(entry => (
+                    <div key={entry.id} className="px-4 py-2.5 flex items-start justify-between gap-3 text-sm">
+                      <div>
+                        <span className={entry.success ? 'text-green-600' : 'text-red-600'}>
+                          {entry.success ? '✅ Enviado' : '❌ Falhou'}
+                        </span>
+                        <span className="text-gray-400 ml-2">{formatLogDate(entry.sent_at)}</span>
+                        <div className="text-gray-500 text-xs">para {entry.recipient}</div>
+                        {!entry.success && entry.error && (
+                          <div className="text-red-500 text-xs mt-1 break-words">{entry.error}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>
